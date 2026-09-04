@@ -23,7 +23,8 @@ else:
     load_dotenv()
 
 api_key = os.getenv("GOOGLE_API_KEY")
-model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+raw_model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
+model_name = raw_model.strip().strip("'\"") if raw_model and raw_model.strip() else "gemini-3.6-flash"
 
 print("=" * 40)
 print("Gemini configuration:")

@@ -109,7 +109,11 @@ def home():
 @app.route("/health", methods=["GET"], strict_slashes=False)
 def health():
     api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
+    if model and model.strip():
+        model = model.strip().strip("'\"")
+    else:
+        model = "gemini-3.6-flash"
     return jsonify({
         "success": True,
         "service": "Raabta AI API",

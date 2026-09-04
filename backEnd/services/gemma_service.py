@@ -34,7 +34,10 @@ def _load_environment():
         load_dotenv()
 
 def get_model_name():
-    return os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
+    if model and model.strip():
+        return model.strip().strip("'\"")
+    return "gemini-3.6-flash"
 
 # =============================
 # CENTRALIZED CLIENT SETUP
