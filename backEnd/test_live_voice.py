@@ -45,14 +45,13 @@ def test_production_with_real_urdu_speech():
             assert res.status == 200
             assert data["success"] is True
             print("\n>>> FULL END-TO-END ZERO-DISK VOICE FLOW TEST PASSED ON PRODUCTION (HTTP 200)!")
-            return True
     except urllib.error.HTTPError as e:
         body = e.read().decode()
         print("HTTP Status:", e.code)
         print("Body:", body)
         assert "Disk space exhausted" not in body
         assert "No space left on device" not in body
-        return False
+        assert "Ephemeral storage limit reached" not in body
 
 if __name__ == "__main__":
     test_production_with_real_urdu_speech()

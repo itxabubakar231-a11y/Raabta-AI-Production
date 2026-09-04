@@ -43,23 +43,31 @@ def voice_report():
         if request.content_length and request.content_length > MAX_AUDIO_SIZE_BYTES:
             return jsonify({
                 "success": False,
-                "error": "Audio file exceeds maximum allowed size limit of 10 MB."
-            }), 400
+                "error": "Audio file is too large."
+            }), 413
 
-        # Read directly into in-memory bytes with size cap
+        # Read directly into in-memory bytes with size cap (no disk I/O)
         audio_bytes = audio.read(MAX_AUDIO_SIZE_BYTES + 1)
 
         if not audio_bytes or len(audio_bytes) < 10:
             return jsonify({
                 "success": False,
-                "error": "Audio file is empty or too short."
+                "error": "Invalid audio file: audio recording is empty or corrupt."
             }), 400
 
         if len(audio_bytes) > MAX_AUDIO_SIZE_BYTES:
             return jsonify({
                 "success": False,
-                "error": "Audio file exceeds maximum allowed size limit of 10 MB."
-            }), 400
+                "error": "Audio file is too large."
+            }), 413
+
+        # Check API key configuration
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            return jsonify({
+                "success": False,
+                "error": "AI service configuration error: GOOGLE_API_KEY is not configured in environment."
+            }), 500
 
         mime_type = normalize_audio_mime_type(audio.mimetype, filename=audio.filename)
         print(f"\n[INFO] Audio received in-memory: {len(audio_bytes)} bytes | MIME: {mime_type} | Zero-disk mode")
@@ -70,14 +78,26 @@ def voice_report():
         try:
             voice_result = speech_to_text(audio_bytes, mime_type=mime_type)
             user_text = voice_result.get("text", "").strip()
-        except Exception as stt_err:
-            print(f"[ERROR] Audio transcription failed: {stt_err}")
+        except ValueError as val_err:
+            # Client error: invalid audio or unsupported format
             return jsonify({
                 "success": False,
-                "error": f"Audio processing error: {str(stt_err)}"
+                "error": str(val_err)
             }), 400
+        except Exception as stt_err:
+            err_msg = str(stt_err)
+            print(f"[ERROR] Audio transcription failed: {stt_err}")
+            # Sanitize internal error details and API keys
+            if "AIza" in err_msg or "api_key" in err_msg.lower():
+                err_msg = "Error connecting to AI speech recognition service."
+            elif "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
+                err_msg = "AI speech recognition service is temporarily busy. Please try again shortly."
+            return jsonify({
+                "success": False,
+                "error": f"Audio processing error: {err_msg}"
+            }), 502
         finally:
-            # Release memory buffer promptly
+            # Release in-memory buffer immediately
             audio_bytes = None
 
         try:

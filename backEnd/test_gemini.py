@@ -22,94 +22,98 @@ elif os.path.exists(legacy_env):
 else:
     load_dotenv()
 
-api_key = os.getenv("GOOGLE_API_KEY")
-raw_model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
-model_name = raw_model.strip().strip("'\"") if raw_model and raw_model.strip() else "gemini-3.6-flash"
+def run_gemini_diagnostics():
+    api_key = os.getenv("GOOGLE_API_KEY")
+    raw_model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
+    model_name = raw_model.strip().strip("'\"") if raw_model and raw_model.strip() else "gemini-3.6-flash"
 
-print("=" * 40)
-print("Gemini configuration:")
-print("=" * 40)
-
-if not api_key:
-    print("API key detected: NO")
-    print("Client initialized: NO")
-    print(f"Model configured: {model_name}")
-    print("Test generation: FAIL")
-    print("\n[DIAGNOSIS: KEY_MISSING]")
-    print("GOOGLE_API_KEY was not found in environment or .env file.")
-    print("Please configure GOOGLE_API_KEY in backEnd/.env or project root .env.")
     print("=" * 40)
-    sys.exit(1)
-
-print("API key detected: YES")
-
-# Test client initialization
-client = None
-try:
-    from google import genai
-    client = genai.Client(api_key=api_key)
-    print("Client initialized: YES")
-except Exception as e:
-    print("Client initialized: NO")
-    print(f"Model configured: {model_name}")
-    print("Test generation: FAIL")
-    print("\n[DIAGNOSIS: CLIENT_INIT_FAILURE]")
-    print(f"Failed to initialize Google GenAI client: {type(e).__name__}: {str(e)}")
+    print("Gemini configuration:")
     print("=" * 40)
-    sys.exit(1)
 
-print(f"Model configured: {model_name}")
-
-# Test real generation
-try:
-    response = client.models.generate_content(
-        model=model_name,
-        contents="Say 'Raabta AI Gemini Connection Test: SUCCESS'."
-    )
-    
-    # Verify response
-    response_text = ""
-    if hasattr(response, "text") and response.text:
-        response_text = response.text.strip()
-    elif hasattr(response, "candidates") and response.candidates:
-        for c in response.candidates:
-            if c.content and c.content.parts:
-                response_text += "".join(p.text for p in c.content.parts if hasattr(p, "text") and p.text)
-    
-    if response_text:
-        print("Test generation: SUCCESS")
-        print(f"\n[OK] Model response snippet: {response_text[:80]}...")
-        print("=" * 40)
-        sys.exit(0)
-    else:
+    if not api_key:
+        print("API key detected: NO")
+        print("Client initialized: NO")
+        print(f"Model configured: {model_name}")
         print("Test generation: FAIL")
-        print("\n[DIAGNOSIS: EMPTY_RESPONSE]")
-        print("Gemini model returned an empty response.")
+        print("\n[DIAGNOSIS: KEY_MISSING]")
+        print("GOOGLE_API_KEY was not found in environment or .env file.")
+        print("Please configure GOOGLE_API_KEY in backEnd/.env or project root .env.")
         print("=" * 40)
         sys.exit(1)
 
-except Exception as e:
-    err_str = str(e)
-    err_lower = err_str.lower()
-    
-    print("Test generation: FAIL")
-    print("\n[DIAGNOSIS RESULT]")
-    
-    if "api_key_invalid" in err_lower or "api key not valid" in err_lower or "401" in err_str or "403" in err_str:
-        print("Category: INVALID_API_KEY")
-        print("The provided GOOGLE_API_KEY is invalid or lacks necessary permissions.")
-    elif "404" in err_str or "not found" in err_lower or "unsupported" in err_lower:
-        print("Category: MODEL_UNAVAILABLE")
-        print(f"Model '{model_name}' is not found or not available for this API key.")
-    elif "429" in err_str or "resource_exhausted" in err_lower or "quota" in err_lower:
-        print("Category: QUOTA_EXCEEDED")
-        print("API quota limit reached for this key or project.")
-    elif "connection" in err_lower or "timeout" in err_lower or "resolve" in err_lower or "network" in err_lower:
-        print("Category: NETWORK_ERROR")
-        print(f"Network connectivity problem while reaching Gemini API: {type(e).__name__}")
-    else:
-        print("Category: API_ERROR")
-        print(f"Error: {type(e).__name__}: {err_str}")
+    print("API key detected: YES")
+
+    # Test client initialization
+    client = None
+    try:
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        print("Client initialized: YES")
+    except Exception as e:
+        print("Client initialized: NO")
+        print(f"Model configured: {model_name}")
+        print("Test generation: FAIL")
+        print("\n[DIAGNOSIS: CLIENT_INIT_FAILURE]")
+        print(f"Failed to initialize Google GenAI client: {type(e).__name__}: {str(e)}")
+        print("=" * 40)
+        sys.exit(1)
+
+    print(f"Model configured: {model_name}")
+
+    # Test real generation
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents="Say 'Raabta AI Gemini Connection Test: SUCCESS'."
+        )
         
-    print("=" * 40)
-    sys.exit(1)
+        # Verify response
+        response_text = ""
+        if hasattr(response, "text") and response.text:
+            response_text = response.text.strip()
+        elif hasattr(response, "candidates") and response.candidates:
+            for c in response.candidates:
+                if c.content and c.content.parts:
+                    response_text += "".join(p.text for p in c.content.parts if hasattr(p, "text") and p.text)
+        
+        if response_text:
+            print("Test generation: SUCCESS")
+            print(f"\n[OK] Model response snippet: {response_text[:80]}...")
+            print("=" * 40)
+            sys.exit(0)
+        else:
+            print("Test generation: FAIL")
+            print("\n[DIAGNOSIS: EMPTY_RESPONSE]")
+            print("Gemini model returned an empty response.")
+            print("=" * 40)
+            sys.exit(1)
+
+    except Exception as e:
+        err_str = str(e)
+        err_lower = err_str.lower()
+        
+        print("Test generation: FAIL")
+        print("\n[DIAGNOSIS RESULT]")
+        
+        if "api_key_invalid" in err_lower or "api key not valid" in err_lower or "401" in err_str or "403" in err_str:
+            print("Category: INVALID_API_KEY")
+            print("The provided GOOGLE_API_KEY is invalid or lacks necessary permissions.")
+        elif "404" in err_str or "not found" in err_lower or "unsupported" in err_lower:
+            print("Category: MODEL_UNAVAILABLE")
+            print(f"Model '{model_name}' is not found or not available for this API key.")
+        elif "429" in err_str or "resource_exhausted" in err_lower or "quota" in err_lower:
+            print("Category: QUOTA_EXCEEDED")
+            print("API quota limit reached for this key or project.")
+        elif "connection" in err_lower or "timeout" in err_lower or "resolve" in err_lower or "network" in err_lower:
+            print("Category: NETWORK_ERROR")
+            print(f"Network connectivity problem while reaching Gemini API: {type(e).__name__}")
+        else:
+            print("Category: API_ERROR")
+            print(f"Error: {type(e).__name__}: {err_str}")
+            
+        print("=" * 40)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    run_gemini_diagnostics()

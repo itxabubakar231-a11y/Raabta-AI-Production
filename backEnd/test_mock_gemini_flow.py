@@ -248,11 +248,10 @@ def test_voice_report_oversized_audio():
     )
     print("Oversized response status:", response.status_code)
     data = response.get_json()
-    print("Oversized response payload:", data)
-    assert response.status_code == 400
+    assert response.status_code == 413
     assert data["success"] is False
-    assert "exceeds maximum allowed size limit" in data["error"]
-    print("[PASS] Oversized audio rejected cleanly with HTTP 400 without disk writes!")
+    assert data["error"] == "Audio file is too large."
+    print("[PASS] Oversized audio rejected cleanly with HTTP 413 without disk writes!")
 
 def test_voice_report_invalid_empty_audio():
     print("\n--- Test 7: Voice Report Empty/Corrupt Audio Rejection ---")
