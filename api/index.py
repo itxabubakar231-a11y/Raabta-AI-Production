@@ -1,10 +1,6 @@
 import sys
 import os
 
-# Configure writable cache directory for serverless environments
-if os.environ.get("VERCEL"):
-    os.environ["HF_HOME"] = "/tmp/huggingface"
-
 # Add backEnd directory to sys.path
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))

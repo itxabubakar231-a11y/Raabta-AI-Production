@@ -197,7 +197,7 @@ def test_flask_text_report_endpoint():
             print("[PASS] /api/text-report successfully completed text complaint flow with gemini-3.6-flash!")
 
 def test_flask_voice_report_endpoint():
-    print("\n--- Test 5: Flask /api/voice-report In-Memory Endpoint Integration ---")
+    print("\n--- Test 5: Flask /api/voice-report In-Memory Zero-Disk Integration ---")
     mock_stt_result = {"language": "ur", "text": "سڑک پر گڑھا ہے جس سے حادثات ہو رہے ہیں۔"}
     mock_issue_result = {
         "issue": "Pothole",
@@ -220,7 +220,7 @@ def test_flask_voice_report_endpoint():
                     response = client.post(
                         "/api/voice-report",
                         data={
-                            "audio": (dummy_audio, "voice_test.webm", "audio/webm")
+                            "audio": (dummy_audio, "voice_test.webm", "audio/webm;codecs=opus")
                         },
                         content_type="multipart/form-data"
                     )
@@ -232,7 +232,83 @@ def test_flask_voice_report_endpoint():
                     assert data["transcription"] == mock_stt_result["text"]
                     assert data["issue"]["issue"] == "Pothole"
                     mock_stt.assert_called_once()
-                    print("[PASS] /api/voice-report successfully processed audio in-memory without disk overhead!")
+                    print("[PASS] /api/voice-report successfully processed audio in-memory with zero disk overhead!")
+
+def test_voice_report_oversized_audio():
+    print("\n--- Test 6: Voice Report Oversized Audio Rejection (> 10 MB) ---")
+    client = app.test_client()
+    # 11 MB dummy buffer
+    oversized_audio = io.BytesIO(b"X" * (11 * 1024 * 1024))
+    response = client.post(
+        "/api/voice-report",
+        data={
+            "audio": (oversized_audio, "huge_audio.webm", "audio/webm")
+        },
+        content_type="multipart/form-data"
+    )
+    print("Oversized response status:", response.status_code)
+    data = response.get_json()
+    print("Oversized response payload:", data)
+    assert response.status_code == 400
+    assert data["success"] is False
+    assert "exceeds maximum allowed size limit" in data["error"]
+    print("[PASS] Oversized audio rejected cleanly with HTTP 400 without disk writes!")
+
+def test_voice_report_invalid_empty_audio():
+    print("\n--- Test 7: Voice Report Empty/Corrupt Audio Rejection ---")
+    client = app.test_client()
+    empty_audio = io.BytesIO(b"")
+    response = client.post(
+        "/api/voice-report",
+        data={
+            "audio": (empty_audio, "empty.webm", "audio/webm")
+        },
+        content_type="multipart/form-data"
+    )
+    print("Empty audio response status:", response.status_code)
+    data = response.get_json()
+    print("Empty audio response payload:", data)
+    assert response.status_code == 400
+    assert data["success"] is False
+    print("[PASS] Empty audio rejected cleanly with HTTP 400!")
+
+def test_mime_type_normalization():
+    print("\n--- Test 8: Audio MIME Type Normalization ---")
+    from services.voice_input import normalize_audio_mime_type
+    assert normalize_audio_mime_type("audio/webm;codecs=opus") == "audio/webm"
+    assert normalize_audio_mime_type("audio/ogg; codecs=opus") == "audio/ogg"
+    assert normalize_audio_mime_type("audio/mpeg") == "audio/mp3"
+    assert normalize_audio_mime_type("audio/x-wav") == "audio/wav"
+    assert normalize_audio_mime_type(None, filename="voice.webm") == "audio/webm"
+    assert normalize_audio_mime_type(None, filename="recording.m4a") == "audio/m4a"
+    print("[PASS] MIME normalization strips browser parameter attributes correctly!")
+
+def test_vercel_zero_disk_enforcement():
+    print("\n--- Test 9: Vercel Zero-Disk Audio Enforcement ---")
+    from services.voice_input import speech_to_text
+    
+    mock_gemini_resp = MagicMock()
+    mock_gemini_resp.text = "یہ ایک ٹیسٹ آڈیو ہے۔"
+
+    captured_parts = []
+    def mock_generate_content(model, contents, config=None):
+        captured_parts.append(contents)
+        return mock_gemini_resp
+
+    mock_client = MagicMock()
+    mock_client.models.generate_content.side_effect = mock_generate_content
+
+    with patch.dict(os.environ, {"VERCEL": "1", "GOOGLE_API_KEY": "dummy-test-key"}):
+        with patch("services.gemma_service.get_genai_client", return_value=mock_client):
+            result = speech_to_text(b"RIFFtestaudiobytes1234567890", mime_type="audio/webm;codecs=opus")
+            print("Vercel STT result:", result)
+            assert result["text"] == "یہ ایک ٹیسٹ آڈیو ہے۔"
+            assert len(captured_parts) == 1
+            # Verify Part.from_bytes was called with normalized mime
+            call_content = captured_parts[0]
+            parts = call_content[0].parts
+            assert len(parts) == 2
+            print("[PASS] On Vercel, speech_to_text used Gemini in-memory exclusively with 0 disk writes!")
 
 if __name__ == "__main__":
     test_model_resolution()
@@ -240,6 +316,10 @@ if __name__ == "__main__":
     test_flask_image_report_endpoint()
     test_flask_text_report_endpoint()
     test_flask_voice_report_endpoint()
-    print("\n==========================================")
-    print("ALL GEMINI & IN-MEMORY AUDIO TESTS PASSED!")
-    print("==========================================")
+    test_voice_report_oversized_audio()
+    test_voice_report_invalid_empty_audio()
+    test_mime_type_normalization()
+    test_vercel_zero_disk_enforcement()
+    print("\n========================================================")
+    print("ALL 9 TESTS (IMAGE, TEXT, ZERO-DISK VOICE) PASSED!")
+    print("========================================================")

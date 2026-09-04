@@ -1,8 +1,7 @@
 from flask import Blueprint, request, jsonify
 import os
-from werkzeug.utils import secure_filename
 
-from services.voice_input import speech_to_text
+from services.voice_input import speech_to_text, normalize_audio_mime_type
 from services.voice_output import text_to_speech
 from services.gemma_service import (
     detect_issue_from_text,
@@ -14,18 +13,17 @@ voice_report_bp = Blueprint(
     __name__
 )
 
-UPLOAD_FOLDER = os.path.join("/tmp", "uploads") if os.environ.get("VERCEL") else "uploads"
+# 10 MB maximum audio size limit for serverless memory safety
+MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024
 
 
 @voice_report_bp.route("/voice-report", methods=["POST"], strict_slashes=False)
 def voice_report():
-
-    audio_path = None
+    audio_bytes = None
 
     try:
-
         # --------------------------------
-        # STEP 1 : Receive Audio
+        # STEP 1 : In-Memory Audio Ingestion & Size Safety Check
         # --------------------------------
         if "audio" not in request.files:
             return jsonify({
@@ -35,24 +33,39 @@ def voice_report():
 
         audio = request.files["audio"]
 
-        if audio.filename == "":
+        if not audio or audio.filename == "":
             return jsonify({
                 "success": False,
                 "error": "No audio file selected."
             }), 400
 
-        audio_bytes = audio.read()
-        if not audio_bytes:
+        # Enforce maximum size from Content-Length header if present
+        if request.content_length and request.content_length > MAX_AUDIO_SIZE_BYTES:
             return jsonify({
                 "success": False,
-                "error": "Empty audio file."
+                "error": "Audio file exceeds maximum allowed size limit of 10 MB."
             }), 400
 
-        mime_type = audio.mimetype or "audio/webm"
-        print(f"\n========== AUDIO RECEIVED ({len(audio_bytes)} bytes, {mime_type}) ==========\n")
+        # Read directly into in-memory bytes with size cap
+        audio_bytes = audio.read(MAX_AUDIO_SIZE_BYTES + 1)
+
+        if not audio_bytes or len(audio_bytes) < 10:
+            return jsonify({
+                "success": False,
+                "error": "Audio file is empty or too short."
+            }), 400
+
+        if len(audio_bytes) > MAX_AUDIO_SIZE_BYTES:
+            return jsonify({
+                "success": False,
+                "error": "Audio file exceeds maximum allowed size limit of 10 MB."
+            }), 400
+
+        mime_type = normalize_audio_mime_type(audio.mimetype, filename=audio.filename)
+        print(f"\n[INFO] Audio received in-memory: {len(audio_bytes)} bytes | MIME: {mime_type} | Zero-disk mode")
 
         # --------------------------------
-        # STEP 2 : Speech To Text (In-Memory)
+        # STEP 2 : Speech To Text (100% In-Memory)
         # --------------------------------
         try:
             voice_result = speech_to_text(audio_bytes, mime_type=mime_type)
@@ -63,6 +76,9 @@ def voice_report():
                 "success": False,
                 "error": f"Audio processing error: {str(stt_err)}"
             }), 400
+        finally:
+            # Release memory buffer promptly
+            audio_bytes = None
 
         try:
             print("\n========== TRANSCRIPTION ==========")
@@ -74,11 +90,11 @@ def voice_report():
         if not user_text:
             return jsonify({
                 "success": False,
-                "error": "Speech could not be recognized."
+                "error": "Speech could not be recognized. Please speak clearly and try again."
             }), 400
 
         # --------------------------------
-        # STEP 3 : Detect Issue
+        # STEP 3 : Detect Issue (Gemini)
         # --------------------------------
         issue_data = detect_issue_from_text(user_text)
 
@@ -110,7 +126,7 @@ def voice_report():
         )
 
         # --------------------------------
-        # STEP 4 : Generate Complaint
+        # STEP 4 : Generate Complaint (Gemini)
         # --------------------------------
         complaint = generate_complaint(
             issue=issue,
@@ -130,7 +146,7 @@ def voice_report():
         print("================================\n")
 
         # --------------------------------
-        # STEP 5 : Generate Voice Response
+        # STEP 5 : Generate Voice Response (Zero-Disk on Vercel)
         # --------------------------------
         voice_message = (
             f"Your complaint has been generated successfully. "
@@ -142,35 +158,23 @@ def voice_report():
         audio_file = None
         try:
             audio_file = text_to_speech(voice_message)
-            print("\n========== TTS GENERATED ==========")
-            print(audio_file)
-            print("===================================\n")
         except Exception as tts_err:
-            print(f"[WARN] TTS generation failed: {tts_err}")
+            print(f"[WARN] TTS generation skipped: {tts_err}")
 
         # --------------------------------
         # FINAL RESPONSE
         # --------------------------------
         return jsonify({
-
             "success": True,
-
             "transcription": user_text,
-
             "issue": issue_data,
-
             "department": department,
-
             "complaint": complaint,
-
             "voice_text": voice_message,
-
             "voice_file": audio_file
-
         }), 200
 
     except Exception as e:
-
         print("\n========== VOICE ROUTE ERROR ==========")
         print(e)
         print("=======================================\n")
@@ -180,18 +184,6 @@ def voice_report():
             err_msg = "Error connecting to AI service."
 
         return jsonify({
-
             "success": False,
-
             "error": err_msg
-
         }), 500
-
-    finally:
-        try:
-            if audio_path and os.path.exists(audio_path):
-                os.remove(audio_path)
-            if 'audio_file' in locals() and audio_file and os.path.exists(audio_file):
-                os.remove(audio_file)
-        except Exception:
-            pass

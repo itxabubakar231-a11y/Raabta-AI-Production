@@ -1,76 +1,67 @@
 import os
 import io
-import shutil
-import tempfile
-from faster_whisper import WhisperModel
 
-_model = None
-
-def cleanup_ephemeral_storage():
+def normalize_audio_mime_type(mime_type, filename=None):
     """
-    Aggressively cleans temporary caches and incomplete downloads in /tmp 
-    to prevent 'IO Error: No space left on device (os error 28)' in serverless environments.
+    Normalizes audio MIME type for Gemini Multimodal API.
+    Strips browser parameter attributes like ';codecs=opus' or whitespace.
     """
-    if not os.environ.get("VERCEL"):
-        return
+    if mime_type:
+        clean = mime_type.split(";")[0].strip().lower()
+        mapping = {
+            "audio/webm": "audio/webm",
+            "audio/wav": "audio/wav",
+            "audio/wave": "audio/wav",
+            "audio/x-wav": "audio/wav",
+            "audio/mp3": "audio/mp3",
+            "audio/mpeg": "audio/mp3",
+            "audio/ogg": "audio/ogg",
+            "audio/oga": "audio/ogg",
+            "audio/aac": "audio/aac",
+            "audio/m4a": "audio/m4a",
+            "audio/x-m4a": "audio/m4a",
+            "audio/flac": "audio/flac",
+            "video/webm": "audio/webm",  # Some browsers record in video/webm container with audio only
+        }
+        if clean in mapping:
+            return mapping[clean]
 
-    cleanup_targets = [
-        "/tmp/uploads",
-        "/tmp/whisper/.incomplete",
-        "/tmp/huggingface/hub/tmp",
-        "/tmp/voice_reply.mp3"
-    ]
+    if filename:
+        ext = os.path.splitext(filename)[1].lower()
+        ext_map = {
+            ".webm": "audio/webm",
+            ".wav": "audio/wav",
+            ".mp3": "audio/mp3",
+            ".ogg": "audio/ogg",
+            ".m4a": "audio/m4a",
+            ".aac": "audio/aac",
+            ".flac": "audio/flac"
+        }
+        if ext in ext_map:
+            return ext_map[ext]
 
-    for target in cleanup_targets:
-        try:
-            if os.path.exists(target):
-                if os.path.isdir(target):
-                    shutil.rmtree(target, ignore_errors=True)
-                else:
-                    os.remove(target)
-        except Exception:
-            pass
-
-
-def get_whisper_model():
-    """
-    Load Whisper model. On Vercel / serverless environments, defaults to 'tiny' 
-    (~75MB) instead of 'base' (~145MB-290MB during reconstruction) to fit comfortably 
-    within the 512MB ephemeral /tmp limit.
-    """
-    global _model
-    if _model is None:
-        cleanup_ephemeral_storage()
-        print("Loading Whisper model...")
-        model_size = "tiny" if os.environ.get("VERCEL") else "base"
-        download_root = os.path.join("/tmp", "whisper") if os.environ.get("VERCEL") else None
-        
-        _model = WhisperModel(
-            model_size,
-            device="cpu",
-            compute_type="int8",
-            download_root=download_root
-        )
-        print(f"Whisper model ({model_size}) loaded successfully.")
-    return _model
+    return "audio/webm"
 
 
 def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
     """
-    Zero-disk in-memory audio transcription using Gemini 3.6 Flash.
-    Eliminates all local model downloading and ephemeral disk space limitations.
+    Zero-disk in-memory audio transcription using Google GenAI SDK.
+    Uses Gemini 3.6 Flash multimodal audio processing directly from bytes.
     """
     from services.gemma_service import get_genai_client, get_model_name
     from google.genai import types
 
     client = get_genai_client()
     model = get_model_name()
+    clean_mime = normalize_audio_mime_type(mime_type)
 
     prompt = (
-        "You are an AI audio transcriber for a Pakistani civic complaint system (Raabta AI).\n"
-        "Listen to the audio recording carefully and transcribe what the user says in Urdu, English, or Roman Urdu.\n"
-        "Return ONLY the plain transcribed text. Do not include quotes, greetings, explanations, or metadata.\n"
-        "If the audio is completely silent or unintelligible, reply with: [Unclear Speech]"
+        "You are an expert audio transcription assistant for Pakistani civic complaints (Raabta AI).\n"
+        "Listen to this audio recording carefully.\n"
+        "Transcribe exactly what was spoken by the user.\n"
+        "The language may be Urdu, Roman Urdu, or English.\n"
+        "Return ONLY the verbatim transcript text. Do NOT include quotes, explanations, prefixes, or commentary.\n"
+        "If the audio is completely silent, empty, or incomprehensible noise, return: [UNCLEAR]"
     )
 
     contents = [
@@ -78,7 +69,7 @@ def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
             role="user",
             parts=[
                 types.Part.from_text(text=prompt),
-                types.Part.from_bytes(data=audio_bytes, mime_type=mime_type or "audio/webm")
+                types.Part.from_bytes(data=audio_bytes, mime_type=clean_mime)
             ]
         )
     ]
@@ -91,9 +82,14 @@ def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
     text = ""
     if hasattr(response, "text") and response.text:
         text = response.text.strip()
+    elif hasattr(response, "candidates") and response.candidates:
+        for c in response.candidates:
+            if c.content and c.content.parts:
+                text += "".join(p.text for p in c.content.parts if hasattr(p, "text") and p.text)
+        text = text.strip()
 
-    if text == "[Unclear Speech]":
-        text = ""
+    if text == "[UNCLEAR]" or not text:
+        return {"language": "ur", "text": ""}
 
     return {
         "language": "ur",
@@ -103,81 +99,71 @@ def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
 
 def speech_to_text(audio_source, mime_type="audio/webm"):
     """
-    Unified speech-to-text pipeline with in-memory buffer handling:
-    1. Reads audio into memory (supports bytes, io.BytesIO, or file paths).
-    2. Primary in serverless: Gemini in-memory audio transcription (0 MB disk footprint).
-    3. Fallback: faster-whisper with ephemeral storage cleanup.
+    Zero-disk serverless audio transcription pipeline.
+    
+    ON VERCEL:
+      Strict zero-disk processing via Gemini 3.6 Flash.
+      Whisper model downloading to /tmp is completely bypassed.
+      No temp files, no /tmp storage used.
+      
+    LOCAL:
+      In-memory Gemini preferred; in-memory Whisper fallback if offline/no key.
     """
-    print("\n========== SPEECH TO TEXT ==========")
+    from services.gemma_service import _load_environment
+    _load_environment()
 
-    # 1. Normalize audio to bytes
-    audio_bytes = None
-    file_path = None
-
-    if isinstance(audio_source, str):
-        file_path = audio_source
-        if os.path.exists(audio_source):
-            with open(audio_source, "rb") as f:
-                audio_bytes = f.read()
+    # 1. Normalize audio input into in-memory bytes
+    if isinstance(audio_source, (bytes, bytearray)):
+        audio_bytes = bytes(audio_source)
     elif isinstance(audio_source, io.BytesIO):
         audio_bytes = audio_source.getvalue()
-    elif isinstance(audio_source, (bytes, bytearray)):
-        audio_bytes = bytes(audio_source)
     elif hasattr(audio_source, "read"):
         audio_bytes = audio_source.read()
+    elif isinstance(audio_source, str) and os.path.exists(audio_source):
+        with open(audio_source, "rb") as f:
+            audio_bytes = f.read()
     else:
-        raise ValueError(f"Unsupported audio source type: {type(audio_source)}")
+        raise ValueError("Invalid audio source provided.")
 
     if not audio_bytes or len(audio_bytes) < 10:
-        raise ValueError("Audio file is empty or too short.")
+        raise ValueError("Audio data is empty or too short to be processed.")
 
-    # 2. Attempt zero-disk Gemini transcription if API key is configured
+    clean_mime = normalize_audio_mime_type(mime_type)
+    is_vercel = bool(os.environ.get("VERCEL"))
+
+    # 2. Check for GOOGLE_API_KEY
     api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+    if is_vercel:
+        # VERCEL PRODUCTION: STRICT ZERO-DISK
+        # Whisper model download into /tmp (512MB limit) is strictly forbidden.
+        if not api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY is not configured in Vercel Environment Variables. "
+                "Serverless audio transcription requires GOOGLE_API_KEY for zero-disk in-memory processing."
+            )
+
+        print("[INFO] Vercel serverless audio: transcribing in-memory with Gemini...")
+        return transcribe_with_gemini(audio_bytes, mime_type=clean_mime)
+
+    # LOCAL DEVELOPMENT
     if api_key:
         try:
-            print("[INFO] Transcribing audio with Gemini (zero disk footprint)...")
-            gemini_result = transcribe_with_gemini(audio_bytes, mime_type=mime_type)
-            if gemini_result and gemini_result.get("text"):
-                text = gemini_result["text"]
-                print("Gemini Transcription :", text[:100] if len(text) > 100 else text)
-                print("====================================\n")
-                return gemini_result
+            print("[INFO] Local development: attempting in-memory Gemini transcription...")
+            return transcribe_with_gemini(audio_bytes, mime_type=clean_mime)
         except Exception as gemini_err:
-            print(f"[WARN] Gemini audio transcription error: {gemini_err}. Falling back to Whisper...")
+            print(f"[WARN] Local Gemini audio transcription error: {gemini_err}. Trying local Whisper fallback...")
 
-    # 3. Fallback: faster-whisper
+    # Offline local fallback: Whisper (in-memory buffer)
     try:
-        model = get_whisper_model()
-
-        # If we have a file path, use it; otherwise use BytesIO buffer directly in-memory
-        transcribe_input = file_path if (file_path and os.path.exists(file_path)) else io.BytesIO(audio_bytes)
-
-        segments, info = model.transcribe(
-            transcribe_input,
-            language="ur",
-            beam_size=5
-        )
-
-        text = ""
-        for segment in segments:
-            text += segment.text + " "
-
-        text = text.strip()
-        print("Detected Language :", getattr(info, "language", "unknown"))
-        print("Transcription     :", text[:100] if len(text) > 100 else text)
-        print("====================================\n")
-
+        from faster_whisper import WhisperModel
+        print("[INFO] Running local Whisper in-memory fallback...")
+        model = WhisperModel("base", device="cpu", compute_type="int8")
+        segments, info = model.transcribe(io.BytesIO(audio_bytes), language="ur", beam_size=5)
+        text = " ".join(s.text for s in segments).strip()
         return {
             "language": getattr(info, "language", "ur"),
             "text": text
         }
-
     except Exception as whisper_err:
-        err_msg = str(whisper_err)
-        if "os error 28" in err_msg or "No space left on device" in err_msg:
-            cleanup_ephemeral_storage()
-            raise RuntimeError(
-                "Disk space exhausted during audio processing in serverless environment. "
-                "Ephemeral storage limit reached. Please verify GOOGLE_API_KEY is set in Vercel to use zero-disk in-memory audio processing."
-            ) from whisper_err
-        raise whisper_err
+        raise RuntimeError(f"Audio transcription failed: {whisper_err}") from whisper_err
