@@ -196,11 +196,50 @@ def test_flask_text_report_endpoint():
             assert data["ai_result"]["issue"] == "Water Leakage"
             print("[PASS] /api/text-report successfully completed text complaint flow with gemini-3.6-flash!")
 
+def test_flask_voice_report_endpoint():
+    print("\n--- Test 5: Flask /api/voice-report In-Memory Endpoint Integration ---")
+    mock_stt_result = {"language": "ur", "text": "سڑک پر گڑھا ہے جس سے حادثات ہو رہے ہیں۔"}
+    mock_issue_result = {
+        "issue": "Pothole",
+        "reason": "سڑک پر گڑھا ہے جس سے حادثات ہو رہے ہیں۔",
+        "severity": "High",
+        "department": "Municipal Corporation"
+    }
+    mock_complaint_result = {
+        "complaint_subject": "Urgent Complaint Regarding Pothole",
+        "complaint_body": "Respected Sir/Madam,\n\nPlease fix the pothole..."
+    }
+
+    client = app.test_client()
+    dummy_audio = io.BytesIO(b"RIFFdummywavdataherefortestinginmemory1234567890")
+
+    with patch("routes.voice_report.speech_to_text", return_value=mock_stt_result) as mock_stt:
+        with patch("routes.voice_report.detect_issue_from_text", return_value=mock_issue_result):
+            with patch("routes.voice_report.generate_complaint", return_value=mock_complaint_result):
+                with patch("routes.voice_report.text_to_speech", return_value=None):
+                    response = client.post(
+                        "/api/voice-report",
+                        data={
+                            "audio": (dummy_audio, "voice_test.webm", "audio/webm")
+                        },
+                        content_type="multipart/form-data"
+                    )
+                    print("Voice response status:", response.status_code)
+                    data = response.get_json()
+                    print("Voice response payload:", json.dumps(data, indent=2))
+                    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+                    assert data["success"] is True
+                    assert data["transcription"] == mock_stt_result["text"]
+                    assert data["issue"]["issue"] == "Pothole"
+                    mock_stt.assert_called_once()
+                    print("[PASS] /api/voice-report successfully processed audio in-memory without disk overhead!")
+
 if __name__ == "__main__":
     test_model_resolution()
     test_end_to_end_image_complaint_flow()
     test_flask_image_report_endpoint()
     test_flask_text_report_endpoint()
+    test_flask_voice_report_endpoint()
     print("\n==========================================")
-    print("ALL GEMINI 3.6 FLASH FLOW TESTS PASSED!")
+    print("ALL GEMINI & IN-MEMORY AUDIO TESTS PASSED!")
     print("==========================================")

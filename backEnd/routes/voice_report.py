@@ -41,27 +41,21 @@ def voice_report():
                 "error": "No audio file selected."
             }), 400
 
-        os.makedirs(
-            UPLOAD_FOLDER,
-            exist_ok=True
-        )
+        audio_bytes = audio.read()
+        if not audio_bytes:
+            return jsonify({
+                "success": False,
+                "error": "Empty audio file."
+            }), 400
 
-        audio_path = os.path.join(
-            UPLOAD_FOLDER,
-            secure_filename(audio.filename)
-        )
-
-        audio.save(audio_path)
-
-        print("\n========== AUDIO RECEIVED ==========")
-        print(audio_path)
-        print("====================================\n")
+        mime_type = audio.mimetype or "audio/webm"
+        print(f"\n========== AUDIO RECEIVED ({len(audio_bytes)} bytes, {mime_type}) ==========\n")
 
         # --------------------------------
-        # STEP 2 : Speech To Text
+        # STEP 2 : Speech To Text (In-Memory)
         # --------------------------------
         try:
-            voice_result = speech_to_text(audio_path)
+            voice_result = speech_to_text(audio_bytes, mime_type=mime_type)
             user_text = voice_result.get("text", "").strip()
         except Exception as stt_err:
             print(f"[ERROR] Audio transcription failed: {stt_err}")
@@ -194,9 +188,10 @@ def voice_report():
         }), 500
 
     finally:
-        # Optional: uploaded audio delete kar do
         try:
             if audio_path and os.path.exists(audio_path):
                 os.remove(audio_path)
+            if 'audio_file' in locals() and audio_file and os.path.exists(audio_file):
+                os.remove(audio_file)
         except Exception:
             pass
