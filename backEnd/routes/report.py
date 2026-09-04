@@ -208,6 +208,12 @@ Powered by Google Gemma 4
         # -----------------------------
         # Response
         # -----------------------------
+        print(
+            f"[REPORT DIAGNOSTIC] Route=/api/report | Model={get_model_name()} | "
+            f"Success=True | Status=200 | GeminiError=None | "
+            f"Size={len(image_bytes)} bytes | Version={REPORT_PIPELINE_VERSION}"
+        )
+
         return jsonify({
             "status": "success",
             "message": "Complaint generated successfully.",
@@ -231,38 +237,58 @@ Powered by Google Gemma 4
         })
 
     except GeminiQuotaError as q_err:
-        print(f"[WARN] Gemini quota error on /api/report: {q_err}")
+        print(
+            f"[REPORT DIAGNOSTIC] Route=/api/report | Model={get_model_name()} | "
+            f"Success=False | Status=429 | GeminiError=RESOURCE_EXHAUSTED (Quota Exhausted) | "
+            f"Size={len(image_bytes) if 'image_bytes' in locals() else 0} bytes | "
+            f"Version={REPORT_PIPELINE_VERSION}"
+        )
         return jsonify({
             "status": "error",
             "error_code": "RESOURCE_EXHAUSTED",
-            "message": "AI analysis service is temporarily busy or free tier quota limit reached. Please try again shortly.",
+            "message": "AI analysis quota is temporarily exhausted. Please try again later.",
             "pipeline_version": REPORT_PIPELINE_VERSION
         }), 429
 
     except (GeminiConfigError, ValueError) as cfg_err:
-        print(f"[ERROR] Gemini configuration error on /api/report: {cfg_err}")
+        print(
+            f"[REPORT DIAGNOSTIC] Route=/api/report | Model={get_model_name()} | "
+            f"Success=False | Status=500 | GeminiError=AUTH_CONFIG_ERROR | "
+            f"Size={len(image_bytes) if 'image_bytes' in locals() else 0} bytes | "
+            f"Version={REPORT_PIPELINE_VERSION}"
+        )
         return jsonify({
             "status": "error",
             "error_code": "AI_CONFIG_ERROR",
-            "message": "AI service configuration error. Please check server environment settings.",
+            "message": "AI service authentication is not configured correctly.",
             "pipeline_version": REPORT_PIPELINE_VERSION
         }), 500
 
     except Exception as e:
         err_str = str(e)
         if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "Quota exceeded", "quota"]):
-            print(f"[WARN] Gemini quota error on /api/report (string match): {err_str}")
+            print(
+                f"[REPORT DIAGNOSTIC] Route=/api/report | Model={get_model_name()} | "
+                f"Success=False | Status=429 | GeminiError=RESOURCE_EXHAUSTED | "
+                f"Size={len(image_bytes) if 'image_bytes' in locals() else 0} bytes | "
+                f"Version={REPORT_PIPELINE_VERSION}"
+            )
             return jsonify({
                 "status": "error",
                 "error_code": "RESOURCE_EXHAUSTED",
-                "message": "AI analysis service is temporarily busy or free tier quota limit reached. Please try again shortly.",
+                "message": "AI analysis quota is temporarily exhausted. Please try again later.",
                 "pipeline_version": REPORT_PIPELINE_VERSION
             }), 429
 
-        print("[ERROR] Error processing image report:", e)
+        print(
+            f"[REPORT DIAGNOSTIC] Route=/api/report | Model={get_model_name()} | "
+            f"Success=False | Status=500 | GeminiError={type(e).__name__} | "
+            f"Size={len(image_bytes) if 'image_bytes' in locals() else 0} bytes | "
+            f"Version={REPORT_PIPELINE_VERSION}"
+        )
         return jsonify({
             "status": "error",
-            "message": "Failed to process image complaint due to an internal error. Please try again.",
+            "message": "AI analysis service encountered an unexpected error.",
             "pipeline_version": REPORT_PIPELINE_VERSION
         }), 500
 

@@ -81,9 +81,26 @@ def test_gemini_quota_exhausted_returns_429():
         data = response.get_json()
         assert data["status"] == "error"
         assert data["error_code"] == "RESOURCE_EXHAUSTED"
-        assert "quota" in data["message"].lower() or "busy" in data["message"].lower()
+        assert data["message"] == "AI analysis quota is temporarily exhausted. Please try again later."
         # Verify no raw google error JSON or stack trace exposed
         assert "generativelanguage.googleapis.com" not in data["message"]
+        assert data["pipeline_version"] == "gemini-report-v2"
+
+def test_gemini_config_error_returns_500():
+    client = app.test_client()
+    valid_img = create_test_image()
+
+    with patch("routes.report.detect_issue", side_effect=GeminiConfigError("API key error")):
+        response = client.post(
+            "/api/report",
+            data={"image": (valid_img, "test.jpg", "image/jpeg")},
+            content_type="multipart/form-data"
+        )
+        assert response.status_code == 500
+        data = response.get_json()
+        assert data["status"] == "error"
+        assert data["error_code"] == "AI_CONFIG_ERROR"
+        assert data["message"] == "AI service authentication is not configured correctly."
         assert data["pipeline_version"] == "gemini-report-v2"
 
 def test_successful_in_memory_image_report():
