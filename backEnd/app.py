@@ -12,26 +12,31 @@ if sys.platform == "win32":
 
 from dotenv import load_dotenv
 
-# Reliable environment loading
+# Environment loading with priority:
+# 1. System / Platform environment variables (e.g. Vercel Environment Variables: os.environ["GOOGLE_API_KEY"])
+# 2. Local development file: backEnd/.env
+# 3. Project root: .env
 current_dir = os.path.dirname(os.path.abspath(__file__))
 backend_env = os.path.join(current_dir, ".env")
 root_env = os.path.join(current_dir, "..", ".env")
 legacy_env = os.path.join(current_dir, "config.env")
 
-if os.path.exists(backend_env):
-    load_dotenv(backend_env)
-elif os.path.exists(root_env):
-    load_dotenv(root_env)
-elif os.path.exists(legacy_env):
-    load_dotenv(legacy_env)
-else:
-    load_dotenv()
+if not os.environ.get("GOOGLE_API_KEY"):
+    if os.path.exists(backend_env):
+        load_dotenv(backend_env)
+    elif os.path.exists(root_env):
+        load_dotenv(root_env)
+    elif os.path.exists(legacy_env):
+        load_dotenv(legacy_env)
+    else:
+        load_dotenv()
 
-# Safe API key diagnostics (never print or expose the key)
-if os.getenv("GOOGLE_API_KEY"):
-    print("[OK] GOOGLE_API_KEY detected")
+# Safe startup/configuration check (never prints the actual secret)
+if os.environ.get("GOOGLE_API_KEY"):
+    print("GOOGLE_API_KEY is configured")
 else:
-    print("[WARNING] GOOGLE_API_KEY not detected")
+    print("GOOGLE_API_KEY is missing")
+
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -103,15 +108,17 @@ def home():
 @app.route("/api/health", methods=["GET"], strict_slashes=False)
 @app.route("/health", methods=["GET"], strict_slashes=False)
 def health():
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     return jsonify({
         "success": True,
         "service": "Raabta AI API",
         "status": "healthy",
         "ai_configured": bool(api_key),
+        "api_key_status": "GOOGLE_API_KEY is configured" if bool(api_key) else "GOOGLE_API_KEY is missing",
         "model": model
     }), 200
+
 
 
 # Fallback handler if Vercel routes to the internal function entrypoint

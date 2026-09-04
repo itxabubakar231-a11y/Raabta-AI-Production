@@ -14,6 +14,11 @@ from google.genai import types
 # =============================
 
 def _load_environment():
+    # Priority 1: System / Production environment variable (e.g. Vercel Environment Variables)
+    if os.environ.get("GOOGLE_API_KEY"):
+        return
+
+    # Priority 2: Local development backEnd/.env
     current_dir = os.path.dirname(os.path.abspath(__file__))
     backend_env = os.path.join(current_dir, "..", ".env")
     root_env = os.path.join(current_dir, "..", "..", ".env")
@@ -29,7 +34,7 @@ def _load_environment():
         load_dotenv()
 
 def get_model_name():
-    return os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    return os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # =============================
 # CENTRALIZED CLIENT SETUP
@@ -37,13 +42,19 @@ def get_model_name():
 
 def get_genai_client():
     _load_environment()
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
     if not api_key:
-        raise ValueError(
-            "GOOGLE_API_KEY is not set in environment or .env file. "
-            "Please configure GOOGLE_API_KEY in backEnd/.env"
-        )
+        if os.environ.get("VERCEL"):
+            raise ValueError(
+                "GOOGLE_API_KEY is not configured in Vercel Environment Variables. "
+                "Please configure GOOGLE_API_KEY under Vercel: Project Settings -> Environment Variables, then redeploy."
+            )
+        else:
+            raise ValueError(
+                "GOOGLE_API_KEY is not set in environment or backEnd/.env file. "
+                "Please configure GOOGLE_API_KEY in backEnd/.env"
+            )
 
     return genai.Client(api_key=api_key)
 
