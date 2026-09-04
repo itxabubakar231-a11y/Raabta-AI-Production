@@ -5,7 +5,10 @@ from services.voice_input import speech_to_text, normalize_audio_mime_type
 from services.voice_output import text_to_speech
 from services.gemma_service import (
     detect_issue_from_text,
-    generate_complaint
+    generate_complaint,
+    get_model_name,
+    GeminiQuotaError,
+    GeminiConfigError
 )
 
 voice_report_bp = Blueprint(
@@ -15,139 +18,175 @@ voice_report_bp = Blueprint(
 
 # 10 MB maximum audio size limit for serverless memory safety
 MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024
+VOICE_PIPELINE_VERSION = "gemini-voice-v2"
 
 
 @voice_report_bp.route("/voice-report", methods=["POST"], strict_slashes=False)
 def voice_report():
     audio_bytes = None
+    model_name = get_model_name()
+
+    # STAGE: RECEIVE
+    print(f"[VOICE DIAGNOSTIC] Stage=RECEIVE | Route=/api/voice-report | Model={model_name} | Version={VOICE_PIPELINE_VERSION}")
 
     try:
         # --------------------------------
-        # STEP 1 : In-Memory Audio Ingestion & Size Safety Check
+        # STAGE: VALIDATION (In-Memory Ingestion & Size Safety Check)
         # --------------------------------
         if "audio" not in request.files:
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=400 | Error=MISSING_AUDIO_FILE | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "Audio file missing."
+                "error": "Audio recording is missing or invalid.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 400
 
         audio = request.files["audio"]
 
         if not audio or audio.filename == "":
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=400 | Error=EMPTY_AUDIO_FILENAME | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "No audio file selected."
+                "error": "Audio recording is missing or invalid.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 400
 
         # Enforce maximum size from Content-Length header if present
         if request.content_length and request.content_length > MAX_AUDIO_SIZE_BYTES:
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=413 | Error=PAYLOAD_TOO_LARGE | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "Audio file is too large."
+                "error": "Audio file is too large.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 413
 
-        # Read directly into in-memory bytes with size cap (no disk I/O)
+        # Read directly into in-memory bytes with size cap (zero disk I/O)
         audio_bytes = audio.read(MAX_AUDIO_SIZE_BYTES + 1)
 
-        if not audio_bytes or len(audio_bytes) < 10:
-            return jsonify({
-                "success": False,
-                "error": "Invalid audio file: audio recording is empty or corrupt."
-            }), 400
-
         if len(audio_bytes) > MAX_AUDIO_SIZE_BYTES:
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=413 | Error=STREAM_TOO_LARGE | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "Audio file is too large."
+                "error": "Audio file is too large.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 413
+
+        if not audio_bytes or len(audio_bytes) < 10:
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=400 | Error=EMPTY_OR_CORRUPT_BYTES | Version={VOICE_PIPELINE_VERSION}")
+            return jsonify({
+                "success": False,
+                "error": "Audio recording is missing or invalid.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 400
 
         # Check API key configuration
         api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
+            print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=500 | Error=AUTH_CONFIG_ERROR | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "AI service configuration error: GOOGLE_API_KEY is not configured in environment."
+                "error_code": "AI_CONFIG_ERROR",
+                "error": "AI service authentication is not configured correctly.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 500
 
+        # --------------------------------
+        # STAGE: MIME & FORMAT DETECTION
+        # --------------------------------
         mime_type = normalize_audio_mime_type(audio.mimetype, filename=audio.filename)
-        print(f"\n[INFO] Audio received in-memory: {len(audio_bytes)} bytes | MIME: {mime_type} | Zero-disk mode")
+        print(f"[VOICE DIAGNOSTIC] Stage=MIME | Size={len(audio_bytes)} bytes | RawMIME={audio.mimetype} | NormalizedMIME={mime_type} | Version={VOICE_PIPELINE_VERSION}")
 
         # --------------------------------
-        # STEP 2 : Speech To Text (100% In-Memory)
+        # STAGE: AUDIO_PROCESSING & GEMINI TRANSCRIPTION (100% In-Memory)
         # --------------------------------
+        print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | Model={model_name} | Size={len(audio_bytes)} bytes | MIME={mime_type} | Version={VOICE_PIPELINE_VERSION}")
+
         try:
             voice_result = speech_to_text(audio_bytes, mime_type=mime_type)
             user_text = voice_result.get("text", "").strip()
-        except ValueError as val_err:
-            # Client error: invalid audio or unsupported format
+        except GeminiQuotaError as q_err:
+            print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=RESOURCE_EXHAUSTED | Status=429 | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": str(val_err)
+                "error_code": "RESOURCE_EXHAUSTED",
+                "error": "AI speech recognition quota is temporarily exhausted. Please try again later.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 429
+        except GeminiConfigError as cfg_err:
+            print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=AUTH_CONFIG_ERROR | Status=500 | Version={VOICE_PIPELINE_VERSION}")
+            return jsonify({
+                "success": False,
+                "error_code": "AI_CONFIG_ERROR",
+                "error": "AI service authentication is not configured correctly.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 500
+        except ValueError as val_err:
+            print(f"[VOICE DIAGNOSTIC] Stage=AUDIO_PROCESSING | ErrorCategory=INVALID_AUDIO | Status=400 | Version={VOICE_PIPELINE_VERSION}")
+            return jsonify({
+                "success": False,
+                "error": "Audio recording is missing or invalid.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 400
         except Exception as stt_err:
             err_msg = str(stt_err)
-            print(f"[ERROR] Audio transcription failed: {stt_err}")
-            # Sanitize internal error details and API keys
-            if "AIza" in err_msg or "api_key" in err_msg.lower():
-                err_msg = "Error connecting to AI speech recognition service."
-            elif "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg:
-                err_msg = "AI speech recognition service is temporarily busy. Please try again shortly."
+            print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=GENERIC_STT_ERROR | Details={type(stt_err).__name__} | Version={VOICE_PIPELINE_VERSION}")
+
+            if any(code in err_msg for code in ["429", "RESOURCE_EXHAUSTED", "Quota exceeded", "quota"]):
+                return jsonify({
+                    "success": False,
+                    "error_code": "RESOURCE_EXHAUSTED",
+                    "error": "AI speech recognition quota is temporarily exhausted. Please try again later.",
+                    "pipeline_version": VOICE_PIPELINE_VERSION
+                }), 429
+
+            if any(code in err_msg for code in ["401", "403", "API_KEY_INVALID", "auth"]):
+                return jsonify({
+                    "success": False,
+                    "error_code": "AI_CONFIG_ERROR",
+                    "error": "AI service authentication is not configured correctly.",
+                    "pipeline_version": VOICE_PIPELINE_VERSION
+                }), 500
+
+            if any(code in err_msg for code in ["400", "INVALID_ARGUMENT", "unsupported"]):
+                return jsonify({
+                    "success": False,
+                    "error": "Audio recording is missing or invalid.",
+                    "pipeline_version": VOICE_PIPELINE_VERSION
+                }), 400
+
+            if any(code in err_msg for code in ["timeout", "timed out", "503", "504", "unavailable", "connection"]):
+                return jsonify({
+                    "success": False,
+                    "error_code": "UPSTREAM_ERROR",
+                    "error": "AI speech recognition service is temporarily unavailable. Please try again shortly.",
+                    "pipeline_version": VOICE_PIPELINE_VERSION
+                }), 502
+
             return jsonify({
                 "success": False,
-                "error": f"Audio processing error: {err_msg}"
-            }), 502
+                "error": "AI voice analysis encountered an unexpected error.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 500
         finally:
-            # Release in-memory buffer immediately
             audio_bytes = None
 
-        try:
-            print("\n========== TRANSCRIPTION ==========")
-            print(user_text)
-            print("===================================\n")
-        except Exception:
-            pass
-
         if not user_text:
+            print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | Success=False | Status=400 | Error=UNCLEAR_SPEECH | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({
                 "success": False,
-                "error": "Speech could not be recognized. Please speak clearly and try again."
+                "error": "Speech could not be recognized. Please speak clearly and try again.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
             }), 400
 
         # --------------------------------
-        # STEP 3 : Detect Issue (Gemini)
+        # STAGE: DETECT ISSUE & GENERATE COMPLAINT (Gemini)
         # --------------------------------
         issue_data = detect_issue_from_text(user_text)
+        issue = issue_data.get("issue", "General Civic Issue")
+        reason = issue_data.get("reason", user_text)
+        severity = issue_data.get("severity", "Medium")
+        department = issue_data.get("department", "Municipal Corporation")
 
-        try:
-            print("\n========== ISSUE DATA ==========")
-            print(issue_data)
-            print("================================\n")
-        except Exception:
-            pass
-
-        issue = issue_data.get(
-            "issue",
-            "General Civic Issue"
-        )
-
-        reason = issue_data.get(
-            "reason",
-            user_text
-        )
-
-        severity = issue_data.get(
-            "severity",
-            "Medium"
-        )
-
-        department = issue_data.get(
-            "department",
-            "Municipal Corporation"
-        )
-
-        # --------------------------------
-        # STEP 4 : Generate Complaint (Gemini)
-        # --------------------------------
         complaint = generate_complaint(
             issue=issue,
             reason=reason,
@@ -161,12 +200,8 @@ def voice_report():
                 "complaint_body": str(complaint)
             }
 
-        print("\n========== COMPLAINT ==========")
-        print(complaint)
-        print("================================\n")
-
         # --------------------------------
-        # STEP 5 : Generate Voice Response (Zero-Disk on Vercel)
+        # STAGE: RESPONSE GENERATION (Zero-Disk on Vercel)
         # --------------------------------
         voice_message = (
             f"Your complaint has been generated successfully. "
@@ -178,14 +213,14 @@ def voice_report():
         audio_file = None
         try:
             audio_file = text_to_speech(voice_message)
-        except Exception as tts_err:
-            print(f"[WARN] TTS generation skipped: {tts_err}")
+        except Exception:
+            pass
 
-        # --------------------------------
-        # FINAL RESPONSE
-        # --------------------------------
+        print(f"[VOICE DIAGNOSTIC] Stage=RESPONSE | Success=True | Status=200 | TranscriptionLength={len(user_text)} | Version={VOICE_PIPELINE_VERSION}")
+
         return jsonify({
             "success": True,
+            "pipeline_version": VOICE_PIPELINE_VERSION,
             "transcription": user_text,
             "issue": issue_data,
             "department": department,
@@ -194,16 +229,47 @@ def voice_report():
             "voice_file": audio_file
         }), 200
 
-    except Exception as e:
-        print("\n========== VOICE ROUTE ERROR ==========")
-        print(e)
-        print("=======================================\n")
-
-        err_msg = str(e)
-        if "AIza" in err_msg:
-            err_msg = "Error connecting to AI service."
-
+    except GeminiQuotaError as q_err:
+        print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=RESOURCE_EXHAUSTED | Status=429 | Version={VOICE_PIPELINE_VERSION}")
         return jsonify({
             "success": False,
-            "error": err_msg
+            "error_code": "RESOURCE_EXHAUSTED",
+            "error": "AI speech recognition quota is temporarily exhausted. Please try again later.",
+            "pipeline_version": VOICE_PIPELINE_VERSION
+        }), 429
+
+    except GeminiConfigError as cfg_err:
+        print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=AUTH_CONFIG_ERROR | Status=500 | Version={VOICE_PIPELINE_VERSION}")
+        return jsonify({
+            "success": False,
+            "error_code": "AI_CONFIG_ERROR",
+            "error": "AI service authentication is not configured correctly.",
+            "pipeline_version": VOICE_PIPELINE_VERSION
+        }), 500
+
+    except Exception as e:
+        err_msg = str(e)
+        if any(code in err_msg for code in ["429", "RESOURCE_EXHAUSTED", "Quota exceeded", "quota"]):
+            print(f"[VOICE DIAGNOSTIC] Stage=GEMINI | ErrorCategory=RESOURCE_EXHAUSTED | Status=429 | Version={VOICE_PIPELINE_VERSION}")
+            return jsonify({
+                "success": False,
+                "error_code": "RESOURCE_EXHAUSTED",
+                "error": "AI speech recognition quota is temporarily exhausted. Please try again later.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 429
+
+        if any(code in err_msg for code in ["timeout", "timed out", "503", "504", "unavailable"]):
+            print(f"[VOICE DIAGNOSTIC] Stage=UPSTREAM | Status=502 | Version={VOICE_PIPELINE_VERSION}")
+            return jsonify({
+                "success": False,
+                "error_code": "UPSTREAM_ERROR",
+                "error": "AI speech recognition service is temporarily unavailable. Please try again shortly.",
+                "pipeline_version": VOICE_PIPELINE_VERSION
+            }), 502
+
+        print(f"[VOICE DIAGNOSTIC] Stage=UNEXPECTED | Status=500 | Error={type(e).__name__} | Version={VOICE_PIPELINE_VERSION}")
+        return jsonify({
+            "success": False,
+            "error": "AI voice analysis encountered an unexpected error.",
+            "pipeline_version": VOICE_PIPELINE_VERSION
         }), 500

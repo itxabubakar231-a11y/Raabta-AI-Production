@@ -48,7 +48,14 @@ def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
     Zero-disk in-memory audio transcription using Google GenAI SDK.
     Uses Gemini 3.6 Flash multimodal audio processing directly from bytes.
     """
-    from services.gemma_service import get_genai_client, get_model_name
+    from services.gemma_service import (
+        get_genai_client,
+        get_model_name,
+        generate_content_with_retries,
+        extract_response_text,
+        GeminiQuotaError,
+        GeminiConfigError
+    )
     from google.genai import types
 
     client = get_genai_client()
@@ -74,19 +81,21 @@ def transcribe_with_gemini(audio_bytes, mime_type="audio/webm"):
         )
     ]
 
-    response = client.models.generate_content(
-        model=model,
-        contents=contents
+    # Explicitly disable Automatic Function Calling (AFC) and configure multimodal call
+    config = types.GenerateContentConfig(
+        temperature=0.0,
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
     )
 
-    text = ""
-    if hasattr(response, "text") and response.text:
-        text = response.text.strip()
-    elif hasattr(response, "candidates") and response.candidates:
-        for c in response.candidates:
-            if c.content and c.content.parts:
-                text += "".join(p.text for p in c.content.parts if hasattr(p, "text") and p.text)
-        text = text.strip()
+    response = generate_content_with_retries(
+        client=client,
+        model=model,
+        contents=contents,
+        config=config,
+        max_retries=2
+    )
+
+    text = extract_response_text(response)
 
     if text == "[UNCLEAR]" or not text:
         return {"language": "ur", "text": ""}
@@ -126,7 +135,7 @@ def speech_to_text(audio_source, mime_type="audio/webm"):
         raise ValueError("Invalid audio source provided.")
 
     if not audio_bytes or len(audio_bytes) < 10:
-        raise ValueError("Audio data is empty or too short to be processed.")
+        raise ValueError("Audio recording is missing or invalid.")
 
     clean_mime = normalize_audio_mime_type(mime_type)
     is_vercel = bool(os.environ.get("VERCEL"))
@@ -138,7 +147,8 @@ def speech_to_text(audio_source, mime_type="audio/webm"):
         # VERCEL PRODUCTION: STRICT ZERO-DISK
         # Whisper model download into /tmp (512MB limit) is strictly forbidden.
         if not api_key:
-            raise ValueError(
+            from services.gemma_service import GeminiConfigError
+            raise GeminiConfigError(
                 "GOOGLE_API_KEY is not configured in Vercel Environment Variables. "
                 "Serverless audio transcription requires GOOGLE_API_KEY for zero-disk in-memory processing."
             )
