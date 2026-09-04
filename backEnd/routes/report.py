@@ -2,10 +2,18 @@ print("REPORT FILE LOADED")
 
 from flask import Blueprint, request, jsonify
 import os
+import io
 import json
 from werkzeug.utils import secure_filename
 
-from services.gemma_service import detect_issue, generate_complaint, detect_issue_from_text
+from services.gemma_service import (
+    detect_issue,
+    generate_complaint,
+    detect_issue_from_text,
+    get_model_name,
+    GeminiQuotaError,
+    GeminiConfigError
+)
 from services.location_service import get_address
 from models.report_model import Report
 
@@ -14,193 +22,147 @@ report_bp = Blueprint("report", __name__)
 
 print("REPORT ROUTE FILE:", __file__)
 
-UPLOAD_FOLDER = os.path.join("/tmp", "uploads") if os.environ.get("VERCEL") else "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
+REPORT_PIPELINE_VERSION = "gemini-report-v2"
 
 
 @report_bp.route("/report", methods=["POST"], strict_slashes=False)
 def test():
-
-    image_path = None
-
-    print(">>> Request received")
+    print(">>> Image Report Request received")
 
     try:
-
         # -----------------------------
-        # Check Image Upload
+        # Check Image Upload Presence
         # -----------------------------
-
         if "image" not in request.files:
-
             return jsonify({
                 "status": "error",
-                "message": "No image uploaded."
+                "message": "No image uploaded.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
             }), 400
 
         image = request.files["image"]
 
-        if image.filename == "":
-
+        if not image or image.filename == "":
             return jsonify({
                 "status": "error",
-                "message": "No image selected."
+                "message": "No image selected.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
             }), 400
 
         # -----------------------------
-        # Save Image
+        # Size Protection (HTTP 413)
         # -----------------------------
-
-        image_path = os.path.join(
-            UPLOAD_FOLDER,
-            secure_filename(image.filename)
-        )
-
-        image.save(image_path)
-
-        print("Image saved")
+        if request.content_length and request.content_length > MAX_IMAGE_SIZE_BYTES:
+            return jsonify({
+                "status": "error",
+                "message": "Image file is too large. Maximum allowed size is 10 MB.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
+            }), 413
 
         # -----------------------------
-        # Validate Image Integrity
+        # Read Image In-Memory (Zero-Disk)
+        # -----------------------------
+        image_bytes = image.read(MAX_IMAGE_SIZE_BYTES + 1)
+
+        if len(image_bytes) > MAX_IMAGE_SIZE_BYTES:
+            return jsonify({
+                "status": "error",
+                "message": "Image file is too large. Maximum allowed size is 10 MB.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
+            }), 413
+
+        if not image_bytes or len(image_bytes) < 10:
+            return jsonify({
+                "status": "error",
+                "message": "Image file is empty or corrupt.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
+            }), 400
+
+        # -----------------------------
+        # Validate Image Integrity via PIL (In-Memory)
         # -----------------------------
         try:
             from PIL import Image as PILImage
-            with PILImage.open(image_path) as img:
+            with PILImage.open(io.BytesIO(image_bytes)) as img:
                 img.verify()
         except Exception as img_err:
             return jsonify({
                 "status": "error",
-                "message": f"Invalid or corrupt image file: {str(img_err)}"
+                "message": f"Invalid or corrupt image file: {str(img_err)}",
+                "pipeline_version": REPORT_PIPELINE_VERSION
             }), 400
+
+        # Safe diagnostic logging (no secrets or sensitive image bytes logged)
+        print(
+            f"[REPORT] Route=/api/report | Version={REPORT_PIPELINE_VERSION} | "
+            f"Image received=True | Size={len(image_bytes)} bytes | "
+            f"MIME={image.content_type} | Model={get_model_name()}"
+        )
 
         # -----------------------------
         # Get User Location
         # -----------------------------
-
         latitude = request.form.get("latitude")
         longitude = request.form.get("longitude")
-
         address = None
 
         if latitude and longitude:
-
-            address = get_address(
-                latitude,
-                longitude
-            )
-
+            address = get_address(latitude, longitude)
             try:
                 print("Latitude :", latitude)
                 print("Longitude:", longitude)
                 print("Address  :", address)
             except Exception:
                 pass
-
         else:
-
             print("No location received.")
 
         # -----------------------------
-        # Step 1 : Gemma Vision
+        # Step 1 : Gemma Vision (In-Memory)
         # -----------------------------
-
         issue_response = detect_issue(
-
-            image_path=image_path,
-
+            image_source=image_bytes,
             latitude=latitude,
-
             longitude=longitude,
-
             address=address
-
         )
 
         try:
-
-            issue_data = json.loads(
-                issue_response.strip()
-            )
-
-            issue = issue_data.get(
-                "issue",
-                "Unknown"
-            )
-
-            reason = issue_data.get(
-                "reason",
-                ""
-            )
-
-            severity = issue_data.get(
-                "severity",
-                "Medium"
-            )
-
-            department = issue_data.get(
-                "department",
-                "Municipal Corporation"
-            )
-
+            issue_data = json.loads(issue_response.strip())
+            issue = issue_data.get("issue", "Unknown")
+            reason = issue_data.get("reason", "")
+            severity = issue_data.get("severity", "Medium")
+            department = issue_data.get("department", "Municipal Corporation")
         except Exception as e:
-
             print("JSON Parsing Error:", e)
-
-            print("Gemma Raw Response:")
-            print(issue_response)
-
+            print("Gemma Raw Response:", issue_response)
             return jsonify({
-
                 "status": "error",
-
-                "message": "Failed to process AI response."
-
+                "message": "Failed to process AI response.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
             }), 500
 
         # -----------------------------
         # Step 2 : Complaint Generation
         # -----------------------------
-
         complaint_data = generate_complaint(
-
             issue=issue,
-
             reason=reason,
-
             severity=severity,
-
             department=department,
-
             latitude=latitude,
-
             longitude=longitude,
-
             address=address
-
         )
 
-        complaint_subject = complaint_data.get(
-
-            "complaint_subject",
-
-            "Civic Issue Complaint"
-
-        )
-
-        complaint_body = complaint_data.get(
-
-            "complaint_body",
-
-            ""
-
-        )
+        complaint_subject = complaint_data.get("complaint_subject", "Civic Issue Complaint")
+        complaint_body = complaint_data.get("complaint_body", "")
 
         # -----------------------------
         # Final Complaint Report
         # -----------------------------
-
-        complaint = f"""
-Civic Complaint Report
+        complaint = f"""Civic Complaint Report
 ================================
 
 Subject:
@@ -231,82 +193,78 @@ Generated By:
 Raabta AI
 Powered by Google Gemma 4
 """
-
-        print("Complaint generated")
+        print("Complaint generated successfully in-memory")
 
         # -----------------------------
         # Create Report Object
         # -----------------------------
-
         report = Report(
-
             issue,
-
             department,
-
             complaint,
-
-            image_path
-
+            image.filename or "in-memory-image.jpg"
         )
 
         # -----------------------------
         # Response
         # -----------------------------
-
         return jsonify({
-
             "status": "success",
-
             "message": "Complaint generated successfully.",
-
+            "pipeline_version": REPORT_PIPELINE_VERSION,
             "location": {
-
                 "latitude": latitude if latitude else "",
-
                 "longitude": longitude if longitude else "",
-
                 "address": address if address else "Location not provided"
-
             },
-
             "ai_result": {
-
                 "issue": issue,
-
                 "reason": reason,
-
                 "severity": severity,
-
                 "department": department
-
             },
-
             "complaint": {
-
                 "subject": complaint_subject,
-
                 "body": complaint_body
-
             },
-
             "report": report.to_dict()
-
         })
 
-    except Exception as e:
-        print("Error processing image report:", e)
+    except GeminiQuotaError as q_err:
+        print(f"[WARN] Gemini quota error on /api/report: {q_err}")
         return jsonify({
             "status": "error",
-            "message": f"Failed to process image complaint: {str(e)}"
+            "error_code": "RESOURCE_EXHAUSTED",
+            "message": "AI analysis service is temporarily busy or free tier quota limit reached. Please try again shortly.",
+            "pipeline_version": REPORT_PIPELINE_VERSION
+        }), 429
+
+    except (GeminiConfigError, ValueError) as cfg_err:
+        print(f"[ERROR] Gemini configuration error on /api/report: {cfg_err}")
+        return jsonify({
+            "status": "error",
+            "error_code": "AI_CONFIG_ERROR",
+            "message": "AI service configuration error. Please check server environment settings.",
+            "pipeline_version": REPORT_PIPELINE_VERSION
         }), 500
 
-    finally:
-        try:
-            if image_path and os.path.exists(image_path):
-                os.remove(image_path)
-        except Exception:
-            pass
+    except Exception as e:
+        err_str = str(e)
+        if any(code in err_str for code in ["429", "RESOURCE_EXHAUSTED", "Quota exceeded", "quota"]):
+            print(f"[WARN] Gemini quota error on /api/report (string match): {err_str}")
+            return jsonify({
+                "status": "error",
+                "error_code": "RESOURCE_EXHAUSTED",
+                "message": "AI analysis service is temporarily busy or free tier quota limit reached. Please try again shortly.",
+                "pipeline_version": REPORT_PIPELINE_VERSION
+            }), 429
+
+        print("[ERROR] Error processing image report:", e)
+        return jsonify({
+            "status": "error",
+            "message": "Failed to process image complaint due to an internal error. Please try again.",
+            "pipeline_version": REPORT_PIPELINE_VERSION
+        }), 500
 
 
 @report_bp.route("/text-report", methods=["POST"], strict_slashes=False)

@@ -163,6 +163,18 @@ def extract_response_text(response):
     return ""
 
 # =============================
+# CUSTOM EXCEPTIONS
+# =============================
+
+class GeminiQuotaError(Exception):
+    """Raised when Gemini API quota or rate limit is reached (HTTP 429 RESOURCE_EXHAUSTED)."""
+    pass
+
+class GeminiConfigError(Exception):
+    """Raised when Gemini API key is missing, unauthorized, or invalid."""
+    pass
+
+# =============================
 # RETRY LOGIC
 # =============================
 
@@ -196,7 +208,15 @@ def generate_content_with_retries(
             print(f"[WARN] Attempt {attempt} failed: {type(e).__name__}: {error_str}")
 
             # Do not retry on permanent errors (auth, model not found)
-            if any(code in error_str for code in ["401", "403", "404", "API_KEY_INVALID", "not found"]):
+            if any(code in error_str for code in ["401", "403", "API_KEY_INVALID"]):
+                raise GeminiConfigError("Invalid or unauthorized Google API Key.") from last_exception
+
+            if any(code in error_str for code in ["429", "RESOURCE_EXHAUSTED", "quota", "Quota exceeded"]):
+                raise GeminiQuotaError(
+                    "AI service quota exceeded or rate limit reached. Please try again shortly."
+                ) from last_exception
+
+            if any(code in error_str for code in ["404", "not found"]):
                 raise last_exception
 
             if attempt < max_retries:
@@ -211,7 +231,7 @@ def generate_content_with_retries(
 # =============================
 
 def detect_issue(
-    image_path,
+    image_source,
     latitude=None,
     longitude=None,
     address=None,
@@ -222,9 +242,22 @@ def detect_issue(
     client = get_genai_client()
     model = get_model_name()
 
-    print(f"\n[INFO] Starting Vision Detection: {image_path} with model {model}")
+    # In-memory image byte extraction (zero-disk)
+    if isinstance(image_source, (bytes, bytearray)):
+        raw_bytes = bytes(image_source)
+    elif isinstance(image_source, io.BytesIO):
+        raw_bytes = image_source.getvalue()
+    elif hasattr(image_source, "read"):
+        raw_bytes = image_source.read()
+    elif isinstance(image_source, str) and os.path.exists(image_source):
+        with open(image_source, "rb") as f:
+            raw_bytes = f.read()
+    else:
+        raise ValueError(f"Unsupported image source: {type(image_source)}")
 
-    with Image.open(image_path) as image:
+    print(f"\n[INFO] Starting In-Memory Vision Detection: {len(raw_bytes)} bytes with model {model}")
+
+    with Image.open(io.BytesIO(raw_bytes)) as image:
         image = image.convert("RGB")
         image.thumbnail((512, 512))
         buffer = io.BytesIO()
