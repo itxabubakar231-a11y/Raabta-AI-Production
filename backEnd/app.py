@@ -114,31 +114,52 @@ def health():
     }), 200
 
 
+# Fallback handler if Vercel routes to the internal function entrypoint
+@app.route("/api/index.py", methods=["GET", "POST"], strict_slashes=False)
+@app.route("/api/index", methods=["GET", "POST"], strict_slashes=False)
+def vercel_entrypoint():
+    if request.method == "GET":
+        return health()
+    return jsonify({
+        "status": "error",
+        "message": "Direct function entrypoint called. Please send requests to /api/report, /api/text-report, or /api/voice-report."
+    }), 400
+
+
 class VercelPathFixMiddleware:
     """
     WSGI middleware that restores the real requested path on Vercel.
-    When Vercel rewrites requests to /api/index.py, the Vercel Python runtime
-    populates PATH_INFO as '/' while preserving the original client request
-    path in HTTP_X_MATCHED_PATH or REQUEST_URI.
-    This middleware restores the original path so Flask's routing matches
-    the intended endpoint instead of falling back to '/'.
+    Ensures that API routes (/api/health, /api/report, /api/text-report, /api/voice-report)
+    are matched accurately and prevents PATH_INFO from being overwritten with
+    internal script names (/api/index.py).
     """
     def __init__(self, wsgi_app):
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        matched_path = (
-            environ.get("HTTP_X_MATCHED_PATH")
-            or environ.get("REQUEST_URI")
-            or environ.get("RAW_URI")
-            or environ.get("HTTP_X_FORWARDED_URI")
-            or environ.get("HTTP_X_ORIGINAL_URL")
-        )
-        if matched_path:
-            clean_path = matched_path.split("?")[0]
-            current_path = environ.get("PATH_INFO", "")
-            if current_path in ("/", "", "/index.py", "/api/index.py", "/api", "/api/"):
-                environ["PATH_INFO"] = clean_path
+        current_path = environ.get("PATH_INFO", "")
+
+        # If PATH_INFO is already a valid API endpoint, leave it intact
+        if current_path and current_path.startswith(("/api/health", "/api/report", "/api/text-report", "/api/voice-report", "/health", "/report", "/text-report", "/voice-report")):
+            return self.wsgi_app(environ, start_response)
+
+        # If PATH_INFO is missing or collapsed to root, inspect candidate headers
+        candidates = [
+            environ.get("REQUEST_URI"),
+            environ.get("RAW_URI"),
+            environ.get("HTTP_X_FORWARDED_URI"),
+            environ.get("HTTP_X_ORIGINAL_URL"),
+            environ.get("HTTP_X_VERCEL_PATH"),
+            environ.get("HTTP_X_MATCHED_PATH"),
+        ]
+
+        for cand in candidates:
+            if cand:
+                clean = cand.split("?")[0].strip()
+                if clean and clean not in ("/", "", "/api", "/api/", "/index.py", "/api/index.py", "/api/index"):
+                    if not clean.endswith(".py"):
+                        environ["PATH_INFO"] = clean
+                        break
 
         return self.wsgi_app(environ, start_response)
 
