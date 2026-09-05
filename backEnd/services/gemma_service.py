@@ -45,17 +45,17 @@ def get_model_name():
 
 def get_genai_client():
     _load_environment()
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
     if not api_key:
         if os.environ.get("VERCEL"):
             raise ValueError(
-                "GOOGLE_API_KEY is not configured in Vercel Environment Variables. "
-                "Please configure GOOGLE_API_KEY under Vercel: Project Settings -> Environment Variables, then redeploy."
+                "Gemini API key is not configured in Vercel Environment Variables. "
+                "Please configure GOOGLE_API_KEY (or GEMINI_API_KEY) under Vercel: Project Settings -> Environment Variables, then redeploy."
             )
         else:
             raise ValueError(
-                "GOOGLE_API_KEY is not set in environment or backEnd/.env file. "
+                "Gemini API key is not set in environment or backEnd/.env file. "
                 "Please configure GOOGLE_API_KEY in backEnd/.env"
             )
 

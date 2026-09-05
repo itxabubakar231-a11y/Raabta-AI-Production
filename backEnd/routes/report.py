@@ -416,6 +416,22 @@ Powered by Google Gemma 4
             "report": report.to_dict()
         })
 
+    except GeminiQuotaError as q_err:
+        print(f"[TEXT REPORT] Gemini quota exceeded: {q_err}")
+        return jsonify({
+            "status": "error",
+            "error_code": "RESOURCE_EXHAUSTED",
+            "message": "AI analysis quota is temporarily exhausted or rate limit reached. Please try again shortly."
+        }), 429
+
+    except GeminiConfigError as c_err:
+        print(f"[TEXT REPORT] Gemini config error: {c_err}")
+        return jsonify({
+            "status": "error",
+            "error_code": "AI_CONFIG_ERROR",
+            "message": str(c_err)
+        }), 500
+
     except Exception as e:
         print("Error processing text report:", e)
         return jsonify({

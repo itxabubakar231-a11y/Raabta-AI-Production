@@ -21,7 +21,7 @@ backend_env = os.path.join(current_dir, ".env")
 root_env = os.path.join(current_dir, "..", ".env")
 legacy_env = os.path.join(current_dir, "config.env")
 
-if not os.environ.get("GOOGLE_API_KEY"):
+if not os.environ.get("GOOGLE_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
     if os.path.exists(backend_env):
         load_dotenv(backend_env)
     elif os.path.exists(root_env):
@@ -32,10 +32,10 @@ if not os.environ.get("GOOGLE_API_KEY"):
         load_dotenv()
 
 # Safe startup/configuration check (never prints the actual secret)
-if os.environ.get("GOOGLE_API_KEY"):
-    print("GOOGLE_API_KEY is configured")
+if os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY"):
+    print("Gemini API Key is configured")
 else:
-    print("GOOGLE_API_KEY is missing")
+    print("Gemini API Key is missing")
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -159,7 +159,7 @@ def home():
 @app.route("/api/health", methods=["GET"], strict_slashes=False)
 @app.route("/health", methods=["GET"], strict_slashes=False)
 def health():
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     model = os.environ.get("GEMINI_MODEL") or os.getenv("GEMINI_MODEL")
     if model and model.strip():
         model = model.strip().strip("'\"")
@@ -173,7 +173,7 @@ def health():
         "service": "Raabta AI Civic Intelligence Platform",
         "status": "healthy",
         "ai_configured": bool(api_key),
-        "api_key_status": "GOOGLE_API_KEY is configured" if bool(api_key) else "GOOGLE_API_KEY is missing",
+        "api_key_status": "configured" if bool(api_key) else "missing",
         "model": model,
         "database": db_status
     }), 200

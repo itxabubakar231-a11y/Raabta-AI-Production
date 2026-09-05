@@ -80,7 +80,7 @@ def voice_report():
             }), 400
 
         # Check API key configuration
-        api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
         if not api_key:
             print(f"[VOICE DIAGNOSTIC] Stage=VALIDATION | Success=False | Status=500 | Error=AUTH_CONFIG_ERROR | Version={VOICE_PIPELINE_VERSION}")
             return jsonify({

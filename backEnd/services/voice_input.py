@@ -140,8 +140,8 @@ def speech_to_text(audio_source, mime_type="audio/webm"):
     clean_mime = normalize_audio_mime_type(mime_type)
     is_vercel = bool(os.environ.get("VERCEL"))
 
-    # 2. Check for GOOGLE_API_KEY
-    api_key = os.environ.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    # 2. Check for GOOGLE_API_KEY or GEMINI_API_KEY
+    api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
     if is_vercel:
         # VERCEL PRODUCTION: STRICT ZERO-DISK
@@ -149,8 +149,8 @@ def speech_to_text(audio_source, mime_type="audio/webm"):
         if not api_key:
             from services.gemma_service import GeminiConfigError
             raise GeminiConfigError(
-                "GOOGLE_API_KEY is not configured in Vercel Environment Variables. "
-                "Serverless audio transcription requires GOOGLE_API_KEY for zero-disk in-memory processing."
+                "Gemini API key is not configured in Vercel Environment Variables. "
+                "Serverless audio transcription requires GOOGLE_API_KEY (or GEMINI_API_KEY) for zero-disk in-memory processing."
             )
 
         print("[INFO] Vercel serverless audio: transcribing in-memory with Gemini...")
