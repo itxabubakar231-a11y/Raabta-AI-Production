@@ -45,11 +45,14 @@ async function requestJson(endpoint, options = {}) {
   const result = await response.json().catch(() => ({}))
 
   if (!response.ok) {
-    throw new Error(
+    const errorObj = new Error(
       result.error ||
       result.message ||
       `Request failed ${response.status}`
     )
+    errorObj.status = response.status
+    errorObj.data = result
+    throw errorObj
   }
 
   return result
@@ -152,8 +155,12 @@ export async function getMyReports() {
   return requestJson("/reports/my", { method: "GET" })
 }
 
-export async function getReportById(reportId) {
-  return requestJson(`/reports/${reportId}`, { method: "GET" })
+export async function getReportById(reportId, params = {}) {
+  const cleanId = encodeURIComponent(String(reportId || '').trim())
+  const query = new URLSearchParams()
+  if (params.gov) query.append('gov', '1')
+  const qs = query.toString() ? `?${query.toString()}` : ''
+  return requestJson(`/reports/${cleanId}${qs}`, { method: "GET" })
 }
 
 export async function analyzeCivicReport(data) {

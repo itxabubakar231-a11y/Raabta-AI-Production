@@ -495,9 +495,15 @@ def create_report():
         "location": {
             "latitude": lat_f,
             "longitude": lon_f,
+            "gps_accuracy": data.get("gps_accuracy"),
             "address": address,
-            "city": city
+            "location_text": address,
+            "city": city,
+            "timestamp": now
         },
+        "latitude": lat_f,
+        "longitude": lon_f,
+        "address": address,
         "evidence": {
             "has_image": bool(image_bytes or data.get("image_base64")),
             "image_url": data.get("image_url") or ("/sample_evidence.jpg" if image_bytes else None),
@@ -713,6 +719,36 @@ def get_report_detail(report_id):
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
 
+    # Decode authentication token if provided
+    current_user = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header:
+        try:
+            from auth import decode_token
+            token = auth_header.replace("Bearer ", "").strip()
+            current_user = decode_token(token)
+        except Exception:
+            current_user = None
+
+    # Enforce Duty Officer Departmental RBAC for government operational requests (?gov=1)
+    is_gov_request = request.args.get("gov") == "1"
+    if is_gov_request and current_user:
+        role = current_user.get("role")
+        if role == "officer":
+            user_dept = str(current_user.get("department_id") or current_user.get("department") or "").strip().upper()
+            rep_dept = str(report.get("department_id") or report.get("department_name") or "").strip().upper()
+            user_id = str(current_user.get("id") or "")
+            rep_officer = str(report.get("assigned_officer_id") or report.get("assigned_to") or "")
+
+            dept_matches = bool(user_dept and rep_dept and (user_dept == rep_dept or user_dept in rep_dept or rep_dept in user_dept))
+            officer_matches = bool(rep_officer and rep_officer == user_id)
+
+            if not (dept_matches or officer_matches):
+                return jsonify({
+                    "success": False,
+                    "error": "Forbidden: You are only authorized to access operational cases within your assigned department."
+                }), 403
+
     # Fetch any cluster details if linked
     cluster_data = None
     if report.get("cluster_id"):
@@ -722,30 +758,36 @@ def get_report_detail(report_id):
 
     # Fetch internal notes strictly if officer or admin
     internal_notes = []
-    is_authorized_officer = False
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header:
+    is_authorized_staff = False
+    if current_user and current_user.get("role") in ["officer", "admin"]:
+        # Admin can view all notes; officer can view notes if from the matching department or assigned
+        if current_user.get("role") == "admin":
+            is_authorized_staff = True
+        elif current_user.get("role") == "officer":
+            user_dept = str(current_user.get("department_id") or current_user.get("department") or "").strip().upper()
+            rep_dept = str(report.get("department_id") or report.get("department_name") or "").strip().upper()
+            user_id = str(current_user.get("id") or "")
+            rep_officer = str(report.get("assigned_officer_id") or report.get("assigned_to") or "")
+            if (user_dept and rep_dept and (user_dept == rep_dept or user_dept in rep_dept or rep_dept in user_dept)) or (rep_officer and rep_officer == user_id):
+                is_authorized_staff = True
+
+    if is_authorized_staff:
         try:
-            from auth import decode_token
-            token = auth_header.replace("Bearer ", "").strip()
-            payload = decode_token(token)
-            if payload.get("role") in ["officer", "admin"]:
-                is_authorized_officer = True
-                rep_id = str(report.get("_id") or report.get("id") or "")
-                track_id = str(report.get("tracking_id") or "")
-                note_q = []
-                if rep_id:
-                    note_q.append({"report_id": rep_id})
-                if track_id and track_id != rep_id:
-                    note_q.append({"report_id": track_id})
-                raw_notes = list(db.internal_notes.find({"$or": note_q} if len(note_q) > 1 else note_q[0]).sort("created_at", -1))
-                internal_notes = serialize_doc(raw_notes)
+            rep_id = str(report.get("_id") or report.get("id") or "")
+            track_id = str(report.get("tracking_id") or "")
+            note_q = []
+            if rep_id:
+                note_q.append({"report_id": rep_id})
+            if track_id and track_id != rep_id:
+                note_q.append({"report_id": track_id})
+            raw_notes = list(db.internal_notes.find({"$or": note_q} if len(note_q) > 1 else note_q[0]).sort("created_at", -1))
+            internal_notes = serialize_doc(raw_notes)
         except Exception:
             pass
 
     res = serialize_doc(report)
     res["cluster"] = cluster_data
-    if is_authorized_officer:
+    if is_authorized_staff:
         res["internal_notes"] = internal_notes
     else:
         res.pop("internal_notes", None)

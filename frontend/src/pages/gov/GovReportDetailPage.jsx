@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Building, MapPin, Calendar, Shield, Clock,
   CheckCircle2, AlertTriangle, MessageSquare, Sparkles,
@@ -13,14 +13,16 @@ import EvidenceQualityBadge from '../../components/EvidenceQualityBadge'
 import TimelineView from '../../components/TimelineView'
 
 export default function GovReportDetailPage() {
-  const { id } = useParams()
+  const params = useParams()
+  const [searchParams] = useSearchParams()
+  const rawId = params.id || params.reportId || params.trackingId || searchParams.get('id') || searchParams.get('tracking_id') || ''
+  const id = decodeURIComponent(String(rawId).trim())
   const { currentUser, role } = useAuth()
 
   const [report, setReport] = useState(null)
   const [departments, setDepartments] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [viewState, setViewState] = useState('loading') // 'loading' | 'success' | 'notFound' | 'forbidden' | 'unauthorized' | 'serverError' | 'networkError'
   const [error, setError] = useState('')
-  const [errorType, setErrorType] = useState('')
 
   // Modals & Drawers
   const [showOverrideModal, setShowOverrideModal] = useState(false)
@@ -57,18 +59,26 @@ export default function GovReportDetailPage() {
   const [newNote, setNewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
 
+  const isCurrentRef = useRef(true)
+
   async function loadData() {
-    if (!id) return
-    setLoading(true)
+    if (!id) {
+      setViewState('notFound')
+      setError('No report tracking ID or record ID provided in route.')
+      return
+    }
+
+    setViewState('loading')
     setError('')
-    setErrorType('')
     try {
       const [repRes, deptRes, notesRes, officersRes] = await Promise.all([
-        api.getReportById(id),
+        api.getReportById(id, { gov: 1 }),
         api.getDepartments().catch(() => ({ departments: [] })),
         api.getInternalNotes(id).catch(() => ({ notes: [] })),
         api.getOfficers().catch(() => ({ officers: [] }))
       ])
+
+      if (!isCurrentRef.current) return
 
       if (repRes && repRes.report) {
         setReport(repRes.report)
@@ -77,32 +87,45 @@ export default function GovReportDetailPage() {
         setAssignDept(repRes.report.department_id || '')
         setAssignOfficerId(repRes.report.assigned_officer_id || '')
         setAssignOfficerName(repRes.report.assigned_officer_name || '')
+        setDepartments(deptRes.departments || [])
+        setNotes(notesRes.notes || [])
+        setOfficers(officersRes.officers || [])
+        setViewState('success')
       } else {
-        setErrorType('not_found')
+        setViewState('notFound')
         setError(`No report record was found matching ID "${id}".`)
       }
-      setDepartments(deptRes.departments || [])
-      setNotes(notesRes.notes || [])
-      setOfficers(officersRes.officers || [])
     } catch (err) {
+      if (!isCurrentRef.current) return
+      const status = err.status || (err.data && err.data.status)
       const msg = err.message || ''
-      if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('forbidden') || msg.includes('403')) {
-        setErrorType('unauthorized')
+      const lower = msg.toLowerCase()
+
+      if (status === 403 || lower.includes('403') || lower.includes('forbidden')) {
+        setViewState('forbidden')
         setError(msg || 'You do not have authorization to view this departmental report.')
-      } else if (msg.toLowerCase().includes('not found') || msg.includes('404')) {
-        setErrorType('not_found')
+      } else if (status === 401 || lower.includes('401') || lower.includes('unauthorized')) {
+        setViewState('unauthorized')
+        setError(msg || 'Please log in with appropriate credentials to access this case.')
+      } else if (status === 404 || lower.includes('404') || lower.includes('not found')) {
+        setViewState('notFound')
         setError(`No report record was found matching tracking ID or record ID "${id}".`)
+      } else if (status >= 500 || lower.includes('500') || lower.includes('server error')) {
+        setViewState('serverError')
+        setError(msg || 'Server encountered an unexpected error processing this case file.')
       } else {
-        setErrorType('network')
+        setViewState('networkError')
         setError(msg || 'Failed to communicate with database server. Please verify backend status.')
       }
-    } finally {
-      setLoading(false)
     }
   }
 
   useEffect(() => {
+    isCurrentRef.current = true
     loadData()
+    return () => {
+      isCurrentRef.current = false
+    }
   }, [id])
 
   // Officer Actions
@@ -272,7 +295,7 @@ export default function GovReportDetailPage() {
     }
   }
 
-  if (loading) {
+  if (viewState === 'loading') {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-500 text-xs">
         <RefreshCw size={24} className="animate-spin text-emerald-600" />
@@ -281,21 +304,21 @@ export default function GovReportDetailPage() {
     )
   }
 
-  if (error || !report) {
-    const isUnauth = errorType === 'unauthorized'
-    const isNetwork = errorType === 'network'
+  if (viewState !== 'success' || !report) {
+    const isForbidden = viewState === 'forbidden' || viewState === 'unauthorized'
+    const isNetwork = viewState === 'networkError' || viewState === 'serverError'
 
     return (
       <div className="p-8 max-w-2xl mx-auto text-center space-y-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
         <div className={`inline-flex p-3 rounded-2xl ${
-          isUnauth ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+          isForbidden ? 'bg-amber-50 text-amber-600 border border-amber-200' :
           isNetwork ? 'bg-blue-50 text-blue-600 border border-blue-200' :
           'bg-rose-50 text-rose-600 border border-rose-200'
         }`}>
-          {isUnauth ? <ShieldAlert size={32} /> : isNetwork ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
+          {isForbidden ? <ShieldAlert size={32} /> : isNetwork ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
         </div>
         <h3 className="text-lg font-bold text-slate-900">
-          {isUnauth ? 'Access Restricted' : isNetwork ? 'Unable to Load Case File' : 'Report Not Found'}
+          {isForbidden ? 'Access Restricted (403)' : isNetwork ? 'Unable to Connect to Backend' : 'Report Not Found (404)'}
         </h3>
         <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
           {error || 'The requested civic report could not be retrieved from the database.'}
@@ -304,7 +327,7 @@ export default function GovReportDetailPage() {
           {isNetwork && (
             <button
               type="button"
-              onClick={loadData}
+              onClick={() => loadData()}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
             >
               <RefreshCw size={14} />

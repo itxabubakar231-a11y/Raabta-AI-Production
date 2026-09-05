@@ -656,7 +656,7 @@ def add_internal_note(report_id):
         return jsonify({"success": False, "error": "Unauthorized: Officer cannot annotate external reports."}), 403
 
     data = request.get_json(silent=True) or {}
-    note_text = (data.get("note") or "").strip()
+    note_text = (data.get("note") or data.get("content") or "").strip()
     if not note_text:
         return jsonify({"success": False, "error": "Note text is required."}), 400
 

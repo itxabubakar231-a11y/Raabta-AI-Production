@@ -198,7 +198,7 @@ export default function GovProblemMapPage() {
                       {pin.id && (
                         <div className="pt-1.5">
                           <Link
-                            to={pin.type === 'cluster' ? `/gov/repeated` : `/gov/reports/${pin.id}`}
+                            to={pin.type === 'cluster' ? `/gov/repeated` : `/gov/reports/${pin.tracking_id || pin.id}`}
                             className="w-full py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] text-center block shadow-xs transition-colors"
                           >
                             Open Case Dossier
@@ -288,7 +288,7 @@ export default function GovProblemMapPage() {
                       <span className="text-slate-400 capitalize">{pin.status || 'Active'}</span>
                       {pin.id && (
                         <Link
-                          to={pin.type === 'cluster' ? `/gov/repeated` : `/gov/reports/${pin.id}`}
+                          to={pin.type === 'cluster' ? `/gov/repeated` : `/gov/reports/${pin.tracking_id || pin.id}`}
                           className="font-bold text-emerald-700 hover:text-emerald-800 inline-flex items-center gap-0.5"
                           onClick={(e) => e.stopPropagation()}
                         >

@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   FileText, Download, ArrowLeft, MapPin, Calendar, Building,
   Shield, AlertTriangle, CheckCircle, ExternalLink, RefreshCw, Volume2, Sparkles, Navigation,
-  HelpCircle, MessageSquare, Clock, Send
+  HelpCircle, MessageSquare, Clock, Send, ShieldAlert
 } from 'lucide-react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import * as api from '../services/api'
@@ -15,10 +15,11 @@ import TimelineView from '../components/TimelineView'
 export default function ReportDetailPage() {
   const params = useParams()
   const [searchParams] = useSearchParams()
-  const reportId = params.id || searchParams.get('id') || searchParams.get('tracking_id')
+  const rawId = params.id || params.reportId || params.trackingId || searchParams.get('id') || searchParams.get('tracking_id') || ''
+  const reportId = decodeURIComponent(String(rawId).trim())
 
   const [report, setReport] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [viewState, setViewState] = useState('loading') // 'loading' | 'success' | 'notFound' | 'forbidden' | 'serverError' | 'networkError'
   const [error, setError] = useState('')
 
   // Officer Request-Info Response State
@@ -27,26 +28,56 @@ export default function ReportDetailPage() {
   const [replySuccess, setReplySuccess] = useState('')
   const [replyError, setReplyError] = useState('')
 
+  const isCurrentRef = useRef(true)
+
   async function loadReport() {
-    if (!reportId) return
-    setLoading(true)
+    if (!reportId) {
+      setViewState('notFound')
+      setError('No tracking ID provided.')
+      return
+    }
+
+    setViewState('loading')
     setError('')
     try {
       const res = await api.getReportById(reportId)
+      if (!isCurrentRef.current) return
+
       if (res && res.report) {
         setReport(res.report)
+        setViewState('success')
       } else {
+        setViewState('notFound')
         setError('Report could not be found.')
       }
     } catch (err) {
-      setError(err.message || 'Failed to load report')
-    } finally {
-      setLoading(false)
+      if (!isCurrentRef.current) return
+      const status = err.status || (err.data && err.data.status)
+      const msg = err.message || ''
+      const lower = msg.toLowerCase()
+
+      if (status === 403 || lower.includes('403') || lower.includes('forbidden')) {
+        setViewState('forbidden')
+        setError(msg || 'You do not have permission to view this report.')
+      } else if (status === 404 || lower.includes('404') || lower.includes('not found')) {
+        setViewState('notFound')
+        setError('No report record was found matching this tracking ID.')
+      } else if (status >= 500 || lower.includes('500') || lower.includes('server error')) {
+        setViewState('serverError')
+        setError(msg || 'Server encountered an error processing this report.')
+      } else {
+        setViewState('networkError')
+        setError(msg || 'Failed to connect to backend server. Please check your internet connection.')
+      }
     }
   }
 
   useEffect(() => {
+    isCurrentRef.current = true
     loadReport()
+    return () => {
+      isCurrentRef.current = false
+    }
   }, [reportId])
 
   async function handleOfficerReplySubmit(e) {
@@ -67,7 +98,7 @@ export default function ReportDetailPage() {
     }
   }
 
-  if (loading) {
+  if (viewState === 'loading') {
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-500 text-xs">
         <RefreshCw size={24} className="animate-spin text-emerald-600" />
@@ -76,23 +107,34 @@ export default function ReportDetailPage() {
     )
   }
 
-  if (error || !report) {
+  if (viewState !== 'success' || !report) {
+    const isNetwork = viewState === 'networkError' || viewState === 'serverError'
+    const isForbidden = viewState === 'forbidden'
+
     return (
       <div className="p-8 max-w-2xl mx-auto text-center space-y-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
-        <div className="inline-flex p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
-          <AlertTriangle size={32} />
+        <div className={`inline-flex p-3 rounded-2xl ${
+          isForbidden ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+          isNetwork ? 'bg-blue-50 text-blue-600 border border-blue-200' :
+          'bg-rose-50 text-rose-600 border border-rose-200'
+        }`}>
+          {isForbidden ? <ShieldAlert size={32} /> : isNetwork ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Report Not Found</h3>
+        <h3 className="text-lg font-bold text-slate-900">
+          {isForbidden ? 'Access Restricted' : isNetwork ? 'Unable to Connect to Server' : 'Report Not Found'}
+        </h3>
         <p className="text-xs text-slate-500">{error || 'Please check the Tracking ID.'}</p>
         <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            type="button"
-            onClick={loadReport}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors"
-          >
-            <RefreshCw size={14} />
-            <span>Retry Loading</span>
-          </button>
+          {isNetwork && (
+            <button
+              type="button"
+              onClick={() => loadReport()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Retry Loading</span>
+            </button>
+          )}
           <Link
             to="/track"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"

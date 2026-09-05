@@ -57,36 +57,46 @@ def find_report(db, report_id: Any) -> Optional[Dict[str, Any]]:
     - string _id
     - string id
     - BSON ObjectId (if valid and PyMongo available)
-    - tracking_id (exact, uppercase, and case-insensitive regex)
+    - tracking_id (exact, uppercase, lowercase, unquoted, and case-insensitive regex)
+    - exhaustive collection scan fallback
     """
     if not report_id:
         return None
 
-    clean_id = str(report_id).strip()
+    import urllib.parse
+    raw_str = str(report_id)
+    try:
+        unquoted = urllib.parse.unquote(raw_str)
+    except Exception:
+        unquoted = raw_str
+
+    clean_id = unquoted.strip().strip('"\'')
     if not clean_id:
         return None
 
-    # 1. Direct matches
-    rep = db.civic_reports.find_one({"_id": clean_id})
-    if rep:
-        return rep
-
-    rep = db.civic_reports.find_one({"id": clean_id})
-    if rep:
-        return rep
-
-    rep = db.civic_reports.find_one({"tracking_id": clean_id})
-    if rep:
-        return rep
-
-    # 2. Uppercase tracking ID (e.g. ra-2026-3d460 -> RA-2026-3D460)
-    upper_id = clean_id.upper()
-    if upper_id != clean_id:
-        rep = db.civic_reports.find_one({"tracking_id": upper_id})
+    # 1. Exact direct matches on tracking_id, _id, id
+    for field in ["tracking_id", "_id", "id"]:
+        rep = db.civic_reports.find_one({field: clean_id})
         if rep:
             return rep
 
-    # 3. MongoDB ObjectId conversion
+    # 2. Uppercase tracking ID normalization (e.g. ra-2026-3d460 -> RA-2026-3D460)
+    upper_id = clean_id.upper()
+    if upper_id != clean_id:
+        for field in ["tracking_id", "_id", "id"]:
+            rep = db.civic_reports.find_one({field: upper_id})
+            if rep:
+                return rep
+
+    # 3. Lowercase normalization (e.g. for UUID strings)
+    lower_id = clean_id.lower()
+    if lower_id != clean_id:
+        for field in ["_id", "id", "tracking_id"]:
+            rep = db.civic_reports.find_one({field: lower_id})
+            if rep:
+                return rep
+
+    # 4. MongoDB ObjectId conversion
     if PYMONGO_AVAILABLE and ObjectId and ObjectId.is_valid(clean_id):
         try:
             rep = db.civic_reports.find_one({"_id": ObjectId(clean_id)})
@@ -95,7 +105,7 @@ def find_report(db, report_id: Any) -> Optional[Dict[str, Any]]:
         except Exception:
             pass
 
-    # 4. Case-insensitive tracking_id search
+    # 5. Case-insensitive tracking_id search via regex
     try:
         escaped = re.escape(clean_id)
         rep = db.civic_reports.find_one({
@@ -103,6 +113,23 @@ def find_report(db, report_id: Any) -> Optional[Dict[str, Any]]:
         })
         if rep:
             return rep
+    except Exception:
+        pass
+
+    # 6. Exhaustive collection scan fallback
+    # Guarantees that if the report exists in the persistent collection under any identifier variation, it is found
+    try:
+        target_upper = clean_id.upper()
+        target_lower = clean_id.lower()
+        for doc in db.civic_reports.find({}):
+            t = str(doc.get("tracking_id") or "").strip()
+            d = str(doc.get("_id") or "").strip()
+            i = str(doc.get("id") or "").strip()
+            if (t and t.upper() == target_upper) or \
+               (d and d.lower() == target_lower) or \
+               (i and i.lower() == target_lower) or \
+               (t and t.lower() == target_lower):
+                return doc
     except Exception:
         pass
 
@@ -228,6 +255,7 @@ class ResilientCollection:
         self.file_path = os.path.join(storage_path, f"{name}.json")
         self._docs: Dict[str, Dict[str, Any]] = {}
         self._last_mtime: float = 0.0
+        self._last_size: int = 0
         self._load()
 
     def _check_reload(self):
@@ -235,7 +263,8 @@ class ResilientCollection:
         try:
             if os.path.exists(self.file_path):
                 current_mtime = os.path.getmtime(self.file_path)
-                if current_mtime > self._last_mtime or not self._docs:
+                current_size = os.path.getsize(self.file_path)
+                if current_mtime > self._last_mtime or current_size != self._last_size or not self._docs:
                     self._load()
         except Exception:
             pass
@@ -244,6 +273,7 @@ class ResilientCollection:
         if os.path.exists(self.file_path):
             try:
                 self._last_mtime = os.path.getmtime(self.file_path)
+                self._last_size = os.path.getsize(self.file_path)
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     items = json.load(f)
                     self._docs = {str(d.get("_id", d.get("id", idx))): d for idx, d in enumerate(items)}
@@ -271,6 +301,7 @@ class ResilientCollection:
                 json.dump(list(self._docs.values()), f, default=str, indent=2)
             if os.path.exists(self.file_path):
                 self._last_mtime = os.path.getmtime(self.file_path)
+                self._last_size = os.path.getsize(self.file_path)
         except Exception:
             pass
 

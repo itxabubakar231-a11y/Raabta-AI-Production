@@ -483,6 +483,7 @@ export default function CitizenReportWizard() {
         department: finalDeptId,
         latitude: latitude,
         longitude: longitude,
+        gps_accuracy: gpsAccuracy,
         address: addressText,
         city: 'Islamabad',
         transcript: aiAnalysisResult?.transcript || '',
@@ -516,6 +517,11 @@ export default function CitizenReportWizard() {
         } catch {}
         setCreatedReport(res.report)
         setCurrentStep(7) // Success!
+        try {
+          speakConfirmation()
+        } catch (e) {
+          console.warn('Voice confirmation synthesis error:', e)
+        }
       } else {
         throw new Error(res?.message || 'Report creation failed')
       }
@@ -523,6 +529,58 @@ export default function CitizenReportWizard() {
       setSubmissionError(err.message || 'Failed to submit report. Please try again.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const speakConfirmation = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+    try {
+      window.speechSynthesis.cancel()
+
+      const exactUrduText = "السلام علیکم۔ آپ کی شکایت کامیابی سے درج کر دی گئی ہے۔ آپ کی درخواست متعلقہ محکمے کو بھیج دی گئی ہے۔ شکریہ کہ آپ نے رابطہ اے آئی استعمال کیا۔ اللہ حافظ۔"
+      
+      const playSpeech = () => {
+        try {
+          const voices = window.speechSynthesis.getVoices()
+          const urduVoice = voices.find(v => {
+            const lang = (v.lang || '').toLowerCase()
+            const name = (v.name || '').toLowerCase()
+            return lang.startsWith("ur-") || lang === "ur" || name.includes("urdu")
+          })
+
+          const utterance = new SpeechSynthesisUtterance()
+          if (urduVoice) {
+            utterance.text = exactUrduText
+            utterance.voice = urduVoice
+            utterance.lang = urduVoice.lang
+          } else {
+            const englishText = "Assalam-o-Alaikum. Your report has been submitted successfully and forwarded to the designated department. Thank you for using Raabta AI."
+            utterance.text = englishText
+            utterance.lang = "en-US"
+            const englishVoice = voices.find(v => (v.lang || '').includes("en-") || (v.name || '').includes("Google"))
+            if (englishVoice) utterance.voice = englishVoice
+          }
+
+          utterance.rate = 0.85
+          utterance.pitch = 1.0
+          window.speechSynthesis.speak(utterance)
+        } catch (e) {
+          console.warn('Speech synthesis utterance error:', e)
+        }
+      }
+
+      const voices = window.speechSynthesis.getVoices()
+      if (voices && voices.length > 0) {
+        playSpeech()
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          playSpeech()
+          window.speechSynthesis.onvoiceschanged = null
+        }
+        setTimeout(playSpeech, 300)
+      }
+    } catch (e) {
+      console.warn('Speech synthesis error:', e)
     }
   }
 
@@ -1438,18 +1496,26 @@ export default function CitizenReportWizard() {
           {/* Action CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
             <Link
-              to={`/app/reports/${createdReport.id || createdReport._id}`}
-              className="w-full sm:w-auto py-3 px-7 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs"
+              to={`/app/reports/${createdReport.tracking_id || createdReport.id || createdReport._id}`}
+              className="w-full sm:w-auto py-3 px-7 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors"
             >
               Track Complaint Details
             </Link>
+            <button
+              type="button"
+              onClick={speakConfirmation}
+              className="w-full sm:w-auto py-3 px-5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <Volume2 size={16} />
+              <span>Replay Confirmation (صوتی تصدیق)</span>
+            </button>
             <button
               type="button"
               onClick={() => {
                 clearDraft()
                 setCurrentStep(1)
               }}
-              className="w-full sm:w-auto py-3 px-6 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200"
+              className="w-full sm:w-auto py-3 px-6 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 transition-colors cursor-pointer"
             >
               Report Another Problem
             </button>

@@ -141,6 +141,10 @@ const router = createBrowserRouter([
         element: <GovReportDetailPage />,
       },
       {
+        path: 'report/:id',
+        element: <GovReportDetailPage />,
+      },
+      {
         path: 'repeated',
         element: <GovRepeatedProblemsPage />,
       },

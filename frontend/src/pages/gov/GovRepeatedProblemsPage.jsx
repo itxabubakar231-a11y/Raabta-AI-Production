@@ -263,7 +263,7 @@ export default function GovRepeatedProblemsPage() {
                       </div>
 
                       <Link
-                        to={`/gov/reports/${rep.id || rep._id}`}
+                        to={`/gov/reports/${rep.tracking_id || rep.id || rep._id}`}
                         className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shrink-0 transition-colors flex items-center gap-1"
                       >
                         <span>Open Case</span>
