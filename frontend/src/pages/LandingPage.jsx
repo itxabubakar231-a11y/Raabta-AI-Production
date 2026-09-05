@@ -93,14 +93,14 @@ export default function LandingPage() {
                   to="/login"
                   className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition-colors"
                 >
-                  Sign In
+                  Portal Login
                 </Link>
                 <Link
                   to="/signup"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <UserPlus size={15} />
-                  <span>Create Account</span>
+                  <span>Citizen Access</span>
                 </Link>
               </div>
             )}
@@ -159,14 +159,14 @@ export default function LandingPage() {
                       onClick={() => setMobileMenuOpen(false)}
                       className="w-full py-2.5 text-center text-sm font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200"
                     >
-                      Sign In
+                      Portal Login
                     </Link>
                     <Link
                       to="/signup"
                       onClick={() => setMobileMenuOpen(false)}
                       className="w-full py-2.5 text-center text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-500 shadow"
                     >
-                      Create Account
+                      Citizen Access
                     </Link>
                   </>
                 )}
@@ -230,14 +230,14 @@ export default function LandingPage() {
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                     >
                       <UserPlus size={16} />
-                      <span>Create Account</span>
+                      <span>Citizen Access</span>
                     </Link>
                     <Link
                       to="/login"
                       className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-sm shadow-xs transition-all"
                     >
                       <LogIn size={16} className="text-emerald-600" />
-                      <span>Sign In</span>
+                      <span>Portal Login</span>
                     </Link>
                   </>
                 )}
@@ -790,14 +790,14 @@ export default function LandingPage() {
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-white text-emerald-900 font-bold text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                   >
                     <UserPlus size={16} />
-                    <span>Create Account</span>
+                    <span>Citizen Access</span>
                   </Link>
                   <Link
                     to="/login"
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-900/60 hover:bg-emerald-900 text-white border border-emerald-400/30 font-semibold text-sm transition-all"
                   >
                     <LogIn size={16} />
-                    <span>Sign In</span>
+                    <span>Portal Login</span>
                   </Link>
                 </>
               )}
@@ -820,8 +820,8 @@ export default function LandingPage() {
           <div className="flex items-center gap-6 text-slate-300 font-medium">
             <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
             <a href="#capabilities" className="hover:text-white transition-colors">Capabilities</a>
-            <Link to="/login" className="hover:text-white transition-colors">Sign In</Link>
-            <Link to="/signup" className="hover:text-white transition-colors">Create Account</Link>
+            <Link to="/login" className="hover:text-white transition-colors">Portal Login</Link>
+            <Link to="/signup" className="hover:text-white transition-colors">Citizen Access</Link>
           </div>
         </div>
 
