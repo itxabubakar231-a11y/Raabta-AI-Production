@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Building, MapPin, Calendar, Shield, Clock,
   CheckCircle2, AlertTriangle, MessageSquare, Sparkles,
-  Volume2, RefreshCw, Download, FileText, UserCheck, Edit3, X, Camera, HelpCircle
+  Volume2, RefreshCw, Download, FileText, UserCheck, Edit3, X, Camera, HelpCircle, ShieldAlert
 } from 'lucide-react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import * as api from '../../services/api'
@@ -20,6 +20,7 @@ export default function GovReportDetailPage() {
   const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [errorType, setErrorType] = useState('')
 
   // Modals & Drawers
   const [showOverrideModal, setShowOverrideModal] = useState(false)
@@ -60,6 +61,7 @@ export default function GovReportDetailPage() {
     if (!id) return
     setLoading(true)
     setError('')
+    setErrorType('')
     try {
       const [repRes, deptRes, notesRes, officersRes] = await Promise.all([
         api.getReportById(id),
@@ -76,13 +78,24 @@ export default function GovReportDetailPage() {
         setAssignOfficerId(repRes.report.assigned_officer_id || '')
         setAssignOfficerName(repRes.report.assigned_officer_name || '')
       } else {
-        setError('Report could not be found.')
+        setErrorType('not_found')
+        setError(`No report record was found matching ID "${id}".`)
       }
       setDepartments(deptRes.departments || [])
       setNotes(notesRes.notes || [])
       setOfficers(officersRes.officers || [])
     } catch (err) {
-      setError(err.message || 'Failed to load report')
+      const msg = err.message || ''
+      if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('forbidden') || msg.includes('403')) {
+        setErrorType('unauthorized')
+        setError(msg || 'You do not have authorization to view this departmental report.')
+      } else if (msg.toLowerCase().includes('not found') || msg.includes('404')) {
+        setErrorType('not_found')
+        setError(`No report record was found matching tracking ID or record ID "${id}".`)
+      } else {
+        setErrorType('network')
+        setError(msg || 'Failed to communicate with database server. Please verify backend status.')
+      }
     } finally {
       setLoading(false)
     }
@@ -269,20 +282,43 @@ export default function GovReportDetailPage() {
   }
 
   if (error || !report) {
+    const isUnauth = errorType === 'unauthorized'
+    const isNetwork = errorType === 'network'
+
     return (
       <div className="p-8 max-w-2xl mx-auto text-center space-y-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
-        <div className="inline-flex p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
-          <AlertTriangle size={32} />
+        <div className={`inline-flex p-3 rounded-2xl ${
+          isUnauth ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+          isNetwork ? 'bg-blue-50 text-blue-600 border border-blue-200' :
+          'bg-rose-50 text-rose-600 border border-rose-200'
+        }`}>
+          {isUnauth ? <ShieldAlert size={32} /> : isNetwork ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Report Not Found</h3>
-        <p className="text-xs text-slate-500">{error || 'Please check the Tracking ID.'}</p>
-        <Link
-          to="/gov/queue"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to Attention Queue</span>
-        </Link>
+        <h3 className="text-lg font-bold text-slate-900">
+          {isUnauth ? 'Access Restricted' : isNetwork ? 'Unable to Load Case File' : 'Report Not Found'}
+        </h3>
+        <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
+          {error || 'The requested civic report could not be retrieved from the database.'}
+        </p>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          {isNetwork && (
+            <button
+              type="button"
+              onClick={loadData}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Retry Loading</span>
+            </button>
+          )}
+          <Link
+            to="/gov/queue"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            <span>Back to Queue</span>
+          </Link>
+        </div>
       </div>
     )
   }

@@ -14,23 +14,29 @@ export default function GovernmentLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const navigate = useNavigate()
 
-  const govNavItems = [
-    { label: 'Operations Dashboard', path: '/gov', icon: LayoutDashboard, end: true },
-    { label: 'Reports Needing Attention', path: '/gov/queue', icon: AlertOctagon, badge: 'Priority' },
-    { label: 'All Reports', path: '/gov/reports', icon: FileSpreadsheet },
-    { label: 'Problem Map', path: '/gov/map', icon: MapPin },
-    { label: 'Repeated Problems', path: '/gov/repeated', icon: Layers },
-    { label: 'Area Insights', path: '/gov/insights', icon: BarChart3 },
-    { label: 'Departments & Officers', path: '/gov/departments', icon: Building2 },
-    { label: 'Response Times', path: '/gov/response-times', icon: Timer },
-    ...(role === 'admin' ? [
-      { label: 'Users & Access', path: '/gov/users', icon: Users },
-      { label: 'Activity Log', path: '/gov/activity', icon: History },
-    ] : []),
+  const isOfficer = role === 'officer'
+  const deptDisplay = currentUser?.department_name || currentUser?.department_id || (isOfficer ? 'Assigned Department' : 'All ICT Authorities')
+
+  const govNavItems = isOfficer ? [
+    { label: 'Department Desk', path: '/gov', icon: LayoutDashboard, end: true },
+    { label: 'Department Queue', path: '/gov/queue', icon: AlertOctagon, badge: 'Queue' },
+    { label: 'Incident Field Map', path: '/gov/map', icon: MapPin },
+    { label: 'Repeated Hazards', path: '/gov/repeated', icon: Layers },
+    { label: 'Department Performance', path: '/gov/departments', icon: Building2 },
+    { label: 'Settings', path: '/gov/settings', icon: Settings },
+  ] : [
+    { label: 'System Dashboard', path: '/gov', icon: LayoutDashboard, end: true },
+    { label: 'ICT Master Queue', path: '/gov/queue', icon: AlertOctagon, badge: 'Priority' },
+    { label: 'All Reports Catalog', path: '/gov/reports', icon: FileSpreadsheet },
+    { label: 'Geospatial Map', path: '/gov/map', icon: MapPin },
+    { label: 'Repeated Hazards', path: '/gov/repeated', icon: Layers },
+    { label: 'Area Insights & Trends', path: '/gov/insights', icon: BarChart3 },
+    { label: 'Departments & Rosters', path: '/gov/departments', icon: Building2 },
+    { label: 'Response & SLA Times', path: '/gov/response-times', icon: Timer },
+    { label: 'Users & Access Control', path: '/gov/users', icon: Users },
+    { label: 'System Audit Log', path: '/gov/activity', icon: History },
     { label: 'Settings', path: '/gov/settings', icon: Settings },
   ]
-
-  const deptDisplay = currentUser?.department_id || 'ICT Administration'
 
   return (
     <div className="flex flex-col min-h-screen bg-[#faf9f6] text-slate-900 selection:bg-emerald-500/20 selection:text-emerald-900">
@@ -39,12 +45,19 @@ export default function GovernmentLayout() {
         <div className="flex items-center gap-2 max-w-7xl mx-auto w-full justify-between">
           <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Government of Pakistan • Civic Operations Command Portal</span>
+            <span>Government of Pakistan • {isOfficer ? 'Departmental Operational Portal' : 'Civic Operations Command Portal'}</span>
           </span>
           <div className="flex items-center gap-3 text-slate-300">
-            <span>Jurisdiction: <strong>Islamabad Capital Territory</strong></span>
+            <span>Scope: <strong>{isOfficer ? deptDisplay : 'Islamabad Capital Territory (Full Oversight)'}</strong></span>
             <span>•</span>
-            <span>Role: <strong className="uppercase text-emerald-400">{role}</strong></span>
+            <span className="flex items-center gap-1">
+              <span>Role:</span>
+              <strong className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-mono font-bold ${
+                isOfficer ? 'bg-emerald-900/80 text-emerald-300 border border-emerald-700' : 'bg-purple-900/80 text-purple-300 border border-purple-700'
+              }`}>
+                {isOfficer ? 'DUTY OFFICER' : 'ADMINISTRATOR'}
+              </strong>
+            </span>
           </div>
         </div>
       </div>
@@ -56,12 +69,14 @@ export default function GovernmentLayout() {
             <Logo size="md" to="/gov" theme="light" />
             <div className="space-y-0.5 mt-1">
               <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700 leading-tight flex items-center gap-1">
-                <span>Operations Center</span>
-                <span className="px-1.5 py-0.2 rounded bg-slate-200 text-slate-800 text-[9px] font-extrabold uppercase">
+                <span>{isOfficer ? 'Operational Desk' : 'Command Center'}</span>
+                <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase ${
+                  isOfficer ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-purple-100 text-purple-900 border border-purple-200'
+                }`}>
                   {role}
                 </span>
               </p>
-              <p className="text-[10px] text-emerald-700 font-semibold leading-tight">
+              <p className="text-[10px] text-emerald-700 font-semibold leading-tight truncate max-w-[200px]" title={deptDisplay}>
                 {deptDisplay}
               </p>
             </div>

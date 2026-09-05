@@ -51,6 +51,101 @@ def serialize_doc(doc: Any) -> Any:
     return doc
 
 
+def find_report(db, report_id: Any) -> Optional[Dict[str, Any]]:
+    """
+    Universally finds a report across MongoDB and ResilientDatabase by:
+    - string _id
+    - string id
+    - BSON ObjectId (if valid and PyMongo available)
+    - tracking_id (exact, uppercase, and case-insensitive regex)
+    """
+    if not report_id:
+        return None
+
+    clean_id = str(report_id).strip()
+    if not clean_id:
+        return None
+
+    # 1. Direct matches
+    rep = db.civic_reports.find_one({"_id": clean_id})
+    if rep:
+        return rep
+
+    rep = db.civic_reports.find_one({"id": clean_id})
+    if rep:
+        return rep
+
+    rep = db.civic_reports.find_one({"tracking_id": clean_id})
+    if rep:
+        return rep
+
+    # 2. Uppercase tracking ID (e.g. ra-2026-3d460 -> RA-2026-3D460)
+    upper_id = clean_id.upper()
+    if upper_id != clean_id:
+        rep = db.civic_reports.find_one({"tracking_id": upper_id})
+        if rep:
+            return rep
+
+    # 3. MongoDB ObjectId conversion
+    if PYMONGO_AVAILABLE and ObjectId and ObjectId.is_valid(clean_id):
+        try:
+            rep = db.civic_reports.find_one({"_id": ObjectId(clean_id)})
+            if rep:
+                return rep
+        except Exception:
+            pass
+
+    # 4. Case-insensitive tracking_id search
+    try:
+        escaped = re.escape(clean_id)
+        rep = db.civic_reports.find_one({
+            "tracking_id": {"$regex": f"^{escaped}$", "$options": "i"}
+        })
+        if rep:
+            return rep
+    except Exception:
+        pass
+
+    return None
+
+
+def find_user(db, identifier: Any) -> Optional[Dict[str, Any]]:
+    """Universally finds a user by _id, id, email, or ObjectId."""
+    if not identifier:
+        return None
+    clean = str(identifier).strip()
+    u = db.users.find_one({"_id": clean}) or db.users.find_one({"id": clean})
+    if u:
+        return u
+    u = db.users.find_one({"email": clean.lower()}) or db.users.find_one({"email": clean})
+    if u:
+        return u
+    if PYMONGO_AVAILABLE and ObjectId and ObjectId.is_valid(clean):
+        try:
+            u = db.users.find_one({"_id": ObjectId(clean)})
+            if u:
+                return u
+        except Exception:
+            pass
+    return None
+
+
+def find_department(db, identifier: Any) -> Optional[Dict[str, Any]]:
+    """Universally finds a department by code, _id, or case-insensitive code."""
+    if not identifier:
+        return None
+    clean = str(identifier).strip()
+    d = db.departments.find_one({"code": clean}) or db.departments.find_one({"_id": clean}) or db.departments.find_one({"id": clean})
+    if d:
+        return d
+    upper_c = clean.upper()
+    if upper_c != clean:
+        d = db.departments.find_one({"code": upper_c})
+        if d:
+            return d
+    return None
+
+
 def _get_nested(doc: Any, key: str) -> Any:
     """Safely retrieves a value from a nested dict using dot notation."""
     if not doc or not isinstance(doc, dict):
@@ -132,11 +227,23 @@ class ResilientCollection:
         self.storage_path = storage_path
         self.file_path = os.path.join(storage_path, f"{name}.json")
         self._docs: Dict[str, Dict[str, Any]] = {}
+        self._last_mtime: float = 0.0
         self._load()
+
+    def _check_reload(self):
+        """Auto-reloads data if another worker/process modified the JSON file on disk."""
+        try:
+            if os.path.exists(self.file_path):
+                current_mtime = os.path.getmtime(self.file_path)
+                if current_mtime > self._last_mtime or not self._docs:
+                    self._load()
+        except Exception:
+            pass
 
     def _load(self):
         if os.path.exists(self.file_path):
             try:
+                self._last_mtime = os.path.getmtime(self.file_path)
                 with open(self.file_path, "r", encoding="utf-8") as f:
                     items = json.load(f)
                     self._docs = {str(d.get("_id", d.get("id", idx))): d for idx, d in enumerate(items)}
@@ -162,6 +269,8 @@ class ResilientCollection:
             os.makedirs(self.storage_path, exist_ok=True)
             with open(self.file_path, "w", encoding="utf-8") as f:
                 json.dump(list(self._docs.values()), f, default=str, indent=2)
+            if os.path.exists(self.file_path):
+                self._last_mtime = os.path.getmtime(self.file_path)
         except Exception:
             pass
 
@@ -231,11 +340,13 @@ class ResilientCollection:
         return True
 
     def find(self, query: Optional[Dict[str, Any]] = None, projection=None) -> ResilientCursor:
+        self._check_reload()
         query = query or {}
         matched = [dict(d) for d in self._docs.values() if self._matches(d, query)]
         return ResilientCursor(matched)
 
     def find_one(self, query: Optional[Dict[str, Any]] = None, projection=None) -> Optional[Dict[str, Any]]:
+        self._check_reload()
         query = query or {}
         for d in self._docs.values():
             if self._matches(d, query):
@@ -243,6 +354,7 @@ class ResilientCollection:
         return None
 
     def insert_one(self, doc: Dict[str, Any]):
+        self._check_reload()
         new_doc = dict(doc)
         if "_id" not in new_doc:
             new_doc["_id"] = str(uuid.uuid4())
@@ -260,6 +372,7 @@ class ResilientCollection:
         return InsertResult(new_doc["_id"])
 
     def update_one(self, query: Dict[str, Any], update: Dict[str, Any], upsert: bool = False):
+        self._check_reload()
         target_id = None
         matched_doc = None
 
@@ -311,6 +424,7 @@ class ResilientCollection:
         return UpdateResult()
 
     def delete_one(self, query: Dict[str, Any]):
+        self._check_reload()
         target_id = None
         for k, d in self._docs.items():
             if self._matches(d, query):
@@ -327,6 +441,7 @@ class ResilientCollection:
         return DelZeroResult()
 
     def count_documents(self, query: Optional[Dict[str, Any]] = None) -> int:
+        self._check_reload()
         query = query or {}
         return sum(1 for d in self._docs.values() if self._matches(d, query))
 

@@ -84,7 +84,20 @@ from datetime import datetime, timezone
 def get_civic_trends():
     """Returns real aggregated platform metrics, category distributions, and SLA metrics."""
     db = get_db()
-    reports = list(db.civic_reports.find({}))
+    
+    dept_param = request.args.get("department_id") or request.args.get("department")
+    if dept_param and dept_param != "all":
+        query = {
+            "$or": [
+                {"department_id": {"$regex": f"^{re.escape(dept_param)}$", "$options": "i"}},
+                {"department_id": dept_param},
+                {"department_name": {"$regex": re.escape(dept_param), "$options": "i"}}
+            ]
+        }
+        reports = list(db.civic_reports.find(query))
+    else:
+        reports = list(db.civic_reports.find({}))
+
     total_count = len(reports)
 
     # Status tallies
@@ -155,6 +168,8 @@ def get_civic_trends():
 
     avg_risk = round(total_risk / total_count, 1) if total_count > 0 else 0
     resolved_total = status_counts.get("resolved", 0) + status_counts.get("closed", 0)
+    waiting_action_total = status_counts.get("submitted", 0) + status_counts.get("in_review", 0)
+    in_progress_total = status_counts.get("assigned", 0) + status_counts.get("in_progress", 0)
 
     # Real verification satisfaction rate: closed / (closed + disputed)
     verified_total = closed_count + disputed_count
@@ -177,8 +192,11 @@ def get_civic_trends():
         "metrics": {
             "total_reports": total_count,
             "active_open": total_count - resolved_total,
+            "waiting_action_count": waiting_action_total,
+            "in_progress_count": in_progress_total,
             "resolved_count": resolved_total,
             "critical_count": risk_levels["CRITICAL"],
+            "high_count": risk_levels["HIGH"],
             "disputed_count": disputed_count,
             "verified_confirmed_count": closed_count,
             "average_risk_score": avg_risk,

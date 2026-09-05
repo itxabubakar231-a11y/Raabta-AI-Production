@@ -2,26 +2,39 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ShieldAlert, Clock, CheckCircle2, AlertTriangle, Layers,
-  TrendingUp, Users, ArrowRight, RefreshCw, Filter, Building, MapPin
+  TrendingUp, Users, ArrowRight, RefreshCw, Filter, Building, MapPin, ShieldCheck
 } from 'lucide-react'
 import * as api from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import RiskScoreGauge from '../../components/RiskScoreGauge'
 
 export default function GovDashboardPage() {
+  const { currentUser, role } = useAuth()
   const [loading, setLoading] = useState(true)
   const [trends, setTrends] = useState(null)
+  const [queueStats, setQueueStats] = useState({})
   const [recentReports, setRecentReports] = useState([])
   const [clusters, setClusters] = useState([])
 
   async function loadDashboardData() {
     setLoading(true)
     try {
+      const isOfficer = role === 'officer'
+      const dept = currentUser?.department_id
+      const queueParams = { limit: 8 }
+      const trendsParams = {}
+      if (isOfficer && dept) {
+        queueParams.department_id = dept
+        trendsParams.department_id = dept
+      }
+
       const [trendsRes, queueRes, clustersRes] = await Promise.all([
-        api.getTrends().catch(() => ({ metrics: {} })),
-        api.getOperationsQueue({ limit: 8 }).catch(() => ({ queue: [] })),
+        api.getTrends(trendsParams).catch(() => ({ metrics: {} })),
+        api.getOperationsQueue(queueParams).catch(() => ({ queue: [], stats: {} })),
         api.getClusters().catch(() => ({ clusters: [] }))
       ])
       setTrends(trendsRes)
+      setQueueStats(queueRes.stats || {})
       setRecentReports(queueRes.queue || [])
       setClusters(clustersRes.clusters || [])
     } catch (err) {
@@ -33,30 +46,55 @@ export default function GovDashboardPage() {
 
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [role, currentUser?.department_id])
 
   const metrics = trends?.metrics || {}
-  const totalReports = metrics.total_reports ?? recentReports.length
-  const criticalCount = metrics.critical_count ?? 0
-  const inProgressCount = metrics.in_progress_count ?? 0
-  const waitingActionCount = metrics.waiting_action_count ?? (metrics.active_open ?? 0)
-  const resolvedCount = metrics.resolved_count ?? 0
-  const disputedCount = metrics.disputed_count ?? 0
+  
+  // Real database metrics with queue synchronization to guarantee zero 0-count discrepancies
+  const totalReports = queueStats.total !== undefined
+    ? queueStats.total
+    : (metrics.total_reports !== undefined ? metrics.total_reports : recentReports.length)
+
+  const criticalCount = queueStats.critical !== undefined
+    ? queueStats.critical
+    : (metrics.critical_count || 0)
+
+  const waitingActionCount = queueStats.waiting_action !== undefined
+    ? queueStats.waiting_action
+    : (queueStats.pending !== undefined ? queueStats.pending : (metrics.waiting_action_count || metrics.active_open || 0))
+
+  const inProgressCount = queueStats.in_progress !== undefined
+    ? queueStats.in_progress
+    : (metrics.in_progress_count || 0)
+
+  const resolvedCount = queueStats.resolved !== undefined
+    ? queueStats.resolved
+    : (metrics.resolved_count || 0)
+
+  const disputedCount = queueStats.disputed !== undefined
+    ? queueStats.disputed
+    : (metrics.disputed_count || 0)
+
+  const isOfficer = role === 'officer'
+  const deptName = currentUser?.department_name || currentUser?.department_id || 'Assigned Department'
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Operations Header */}
+      {/* Operations Header - Role Differentiated */}
       <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span>Live Civic Operations</span>
+            <span>{isOfficer ? `Duty Officer Desk • ${deptName}` : 'Live Civic Operations • ICT Master Command'}</span>
           </div>
           <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-            Raabta AI Operations Dashboard
+            {isOfficer ? `${deptName} Operations Desk` : 'Raabta AI Operations Dashboard'}
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            Monitor reports, prioritize urgent problems, and track departmental field response across Islamabad Capital Territory.
+            {isOfficer
+              ? `Operational queue, field dispatch, and proof-of-work resolution oversight for ${deptName}.`
+              : 'System-wide government oversight: monitor reports, oversee department response, and track municipal field resolutions across ICT.'
+            }
           </p>
         </div>
 
@@ -73,7 +111,7 @@ export default function GovDashboardPage() {
             to="/gov/queue"
             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
           >
-            Open Attention Queue
+            {isOfficer ? 'Open Department Queue' : 'Open Attention Queue'}
           </Link>
         </div>
       </section>
@@ -85,7 +123,9 @@ export default function GovDashboardPage() {
           <p className="text-2xl font-black text-slate-900 mt-1">
             {loading ? '-' : totalReports}
           </p>
-          <span className="text-[10px] text-slate-400 mt-0.5 block">Total logged in ICT</span>
+          <span className="text-[10px] text-slate-400 mt-0.5 block">
+            {isOfficer ? `Total in ${deptName}` : 'Total logged in ICT'}
+          </span>
         </div>
 
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 shadow-xs">
@@ -251,7 +291,7 @@ export default function GovDashboardPage() {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <Link
-                          to={`/gov/reports/${report.id || report._id}`}
+                          to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
                           className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors inline-block"
                         >
                           Triage & Manage

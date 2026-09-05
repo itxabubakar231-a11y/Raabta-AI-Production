@@ -19,6 +19,10 @@ def get_admin_overview():
     officers_count = db.users.count_documents({"role": "officer"})
     reports_count = db.civic_reports.count_documents({})
     critical_count = db.civic_reports.count_documents({"civic_risk_score.score": {"$gte": 75}})
+    waiting_count = db.civic_reports.count_documents({"status": {"$in": ["submitted", "in_review"]}})
+    in_progress_count = db.civic_reports.count_documents({"status": {"$in": ["assigned", "in_progress"]}})
+    resolved_count = db.civic_reports.count_documents({"status": {"$in": ["resolved", "closed"]}})
+    disputed_count = db.civic_reports.count_documents({"status": "disputed"})
     clusters_count = db.issue_clusters.count_documents({})
 
     return jsonify({
@@ -28,6 +32,11 @@ def get_admin_overview():
             "active_officers": officers_count,
             "total_reports": reports_count,
             "critical_risk_incidents": critical_count,
+            "critical_count": critical_count,
+            "waiting_action_count": waiting_count,
+            "in_progress_count": in_progress_count,
+            "resolved_count": resolved_count,
+            "disputed_count": disputed_count,
             "active_clusters": clusters_count
         }
     }), 200

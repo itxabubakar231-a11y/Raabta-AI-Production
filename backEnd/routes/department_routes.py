@@ -8,14 +8,30 @@ Provides departmental workflow:
 """
 
 import uuid
+import re
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 
-from database import get_db, serialize_doc
+from database import get_db, serialize_doc, find_report
 from auth import token_required, role_required, hash_password
 from services.ai_service import verify_resolution_ai
 
 department_bp = Blueprint("department_bp", __name__)
+
+
+def _check_officer_permission(report, current_user):
+    """Verifies that a Duty Officer can only manage reports for their assigned department or assigned to them."""
+    if current_user.get("role") == "admin":
+        return True
+    user_dept = current_user.get("department_id")
+    rep_dept = report.get("department_id")
+    user_id = str(current_user.get("id"))
+    rep_officer = str(report.get("assigned_officer_id") or report.get("assigned_to") or "")
+    if user_dept and rep_dept and rep_dept.upper() == user_dept.upper():
+        return True
+    if rep_officer and rep_officer == user_id:
+        return True
+    return False
 
 
 DEFAULT_DEPARTMENTS = [
@@ -222,20 +238,24 @@ def get_operations_queue():
 
     # Department filter: allow 'all' or explicit ID, or default to officer's department if non-admin
     dept_param = request.args.get("department_id") or request.args.get("department")
+    if current_user.get("role") != "admin":
+        if user_dept:
+            dept_param = user_dept
+
     if dept_param and dept_param != "all":
         conditions.append({
             "$or": [
-                {"department_id": {"$regex": f"^{dept_param}$", "$options": "i"}},
+                {"department_id": {"$regex": f"^{re.escape(dept_param)}$", "$options": "i"}},
                 {"department_id": dept_param},
-                {"department_name": {"$regex": dept_param, "$options": "i"}}
+                {"department_name": {"$regex": re.escape(dept_param), "$options": "i"}}
             ]
         })
     elif not dept_param and user_dept and current_user.get("role") != "admin":
         conditions.append({
             "$or": [
-                {"department_id": {"$regex": f"^{user_dept}$", "$options": "i"}},
+                {"department_id": {"$regex": f"^{re.escape(user_dept)}$", "$options": "i"}},
                 {"department_id": user_dept},
-                {"department_name": {"$regex": user_dept, "$options": "i"}}
+                {"department_name": {"$regex": re.escape(user_dept), "$options": "i"}}
             ]
         })
 
@@ -294,17 +314,22 @@ def get_operations_queue():
 
     # Calculate real operational queue statistics
     stats = {
+        "total": len(raw_reports),
         "pending": sum(1 for r in raw_reports if r.get("status") in ["submitted", "in_review"]),
+        "waiting_action": sum(1 for r in raw_reports if r.get("status") in ["submitted", "in_review"] or not r.get("assigned_officer_id")),
         "in_progress": sum(1 for r in raw_reports if r.get("status") in ["assigned", "in_progress"]),
+        "resolved": sum(1 for r in raw_reports if r.get("status") in ["resolved", "closed"]),
         "disputed": sum(1 for r in raw_reports if r.get("status") == "disputed"),
         "critical": sum(1 for r in raw_reports if ((r.get("civic_risk_score") or {}).get("score") or 0) >= 75)
     }
 
+    serialized_reports = serialize_doc(reports)
     return jsonify({
         "success": True,
         "count": len(reports),
         "stats": stats,
-        "queue": serialize_doc(reports)
+        "queue": serialized_reports,
+        "reports": serialized_reports
     }), 200
 
 
@@ -313,18 +338,42 @@ def get_operations_queue():
 @role_required("officer", "admin")
 def update_report_status(report_id):
     db = get_db()
-    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    report = find_report(db, report_id)
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
 
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized: Officer cannot modify reports outside assigned department."
+        }), 403
+
     data = request.get_json(silent=True) or {}
-    new_status = data.get("status")
-    notes = data.get("notes", "")
+    new_status = (data.get("status") or "").lower().strip()
+    current_status = (report.get("status") or "submitted").lower()
 
-    valid_statuses = ["submitted", "in_review", "assigned", "in_progress", "resolved", "disputed", "closed"]
+    valid_statuses = ["submitted", "in_review", "assigned", "in_progress", "resolved", "closed", "disputed"]
     if new_status not in valid_statuses:
-        return jsonify({"success": False, "error": f"Invalid status. Must be one of: {valid_statuses}"}), 400
+        return jsonify({"success": False, "error": f"Invalid status: {new_status}"}), 400
 
+    # Operational lifecycle validation for duty officers
+    if request.current_user.get("role") != "admin":
+        valid_transitions = {
+            "submitted": ["in_review", "assigned", "in_progress"],
+            "in_review": ["assigned", "in_progress", "submitted"],
+            "assigned": ["in_progress", "in_review", "resolved"],
+            "in_progress": ["resolved", "assigned", "in_review"],
+            "disputed": ["in_progress", "assigned", "resolved"],
+            "resolved": ["closed", "disputed", "in_progress"],
+            "closed": ["disputed"]
+        }
+        if current_status in valid_transitions and new_status not in valid_transitions[current_status]:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid operational status transition from {current_status.upper()} to {new_status.upper()}."
+            }), 400
+
+    notes = (data.get("notes") or data.get("reason") or "").strip()
     now = datetime.now(timezone.utc).isoformat()
     actor_name = request.current_user.get("full_name", "Officer")
     actor_role = request.current_user.get("role", "officer").upper()
@@ -377,9 +426,11 @@ def update_report_status(report_id):
             "created_at": now
         })
 
+    updated = find_report(db, report_id)
     return jsonify({
         "success": True,
-        "message": f"Report status updated to '{new_status}'."
+        "message": f"Report status updated to '{new_status}'.",
+        "report": serialize_doc(updated)
     }), 200
 
 
@@ -388,9 +439,15 @@ def update_report_status(report_id):
 @role_required("officer", "admin")
 def assign_report(report_id):
     db = get_db()
-    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    report = find_report(db, report_id)
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized: Officer cannot reassign reports outside assigned department."
+        }), 403
 
     data = request.get_json(silent=True) or {}
     officer_id = data.get("officer_id") or request.current_user.get("id")
@@ -469,9 +526,11 @@ def assign_report(report_id):
         "created_at": now
     })
 
+    updated = find_report(db, report_id)
     return jsonify({
         "success": True,
-        "message": f"Report assigned to {officer_name}."
+        "message": f"Report assigned to {officer_name}.",
+        "report": serialize_doc(updated)
     }), 200
 
 
@@ -481,9 +540,15 @@ def assign_report(report_id):
 def mark_resolved_with_proof(report_id):
     """Officer marks report resolved with proof photo and resolution statement."""
     db = get_db()
-    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    report = find_report(db, report_id)
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized: Officer cannot resolve reports outside assigned department."
+        }), 403
 
     data = request.get_json(silent=True) or {}
     notes = (data.get("resolution_notes") or data.get("notes") or "").strip()
@@ -521,6 +586,7 @@ def mark_resolved_with_proof(report_id):
             "$set": {
                 "status": "resolved",
                 "resolution": resolution_data,
+                "resolution_evidence": resolution_data,
                 "updated_at": now
             },
             "$push": {
@@ -568,10 +634,12 @@ def mark_resolved_with_proof(report_id):
             "created_at": now
         })
 
+    updated = find_report(db, report_id)
     return jsonify({
         "success": True,
         "message": "Report resolved and submitted to citizen for verification.",
-        "ai_check": ai_check
+        "ai_check": ai_check,
+        "report": serialize_doc(updated)
     }), 200
 
 
@@ -580,6 +648,13 @@ def mark_resolved_with_proof(report_id):
 @role_required("officer", "admin")
 def add_internal_note(report_id):
     db = get_db()
+    report = find_report(db, report_id)
+    if not report:
+        return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({"success": False, "error": "Unauthorized: Officer cannot annotate external reports."}), 403
+
     data = request.get_json(silent=True) or {}
     note_text = (data.get("note") or "").strip()
     if not note_text:
@@ -590,7 +665,8 @@ def add_internal_note(report_id):
     doc = {
         "_id": note_id,
         "id": note_id,
-        "report_id": str(report_id),
+        "report_id": str(report.get("_id") or report.get("id")),
+        "tracking_id": report.get("tracking_id"),
         "officer_id": request.current_user.get("id"),
         "officer_name": request.current_user.get("full_name"),
         "note": note_text,
@@ -611,7 +687,20 @@ def add_internal_note(report_id):
 @role_required("officer", "admin")
 def get_internal_notes(report_id):
     db = get_db()
-    notes = list(db.internal_notes.find({"report_id": str(report_id)}).sort("created_at", -1))
+    report = find_report(db, report_id)
+    if not report:
+        return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    rep_id = str(report.get("_id") or report.get("id"))
+    track_id = str(report.get("tracking_id") or "")
+    note_q = [{"report_id": rep_id}]
+    if track_id and track_id != rep_id:
+        note_q.append({"report_id": track_id})
+
+    notes = list(db.internal_notes.find({"$or": note_q} if len(note_q) > 1 else note_q[0]).sort("created_at", -1))
     return jsonify({
         "success": True,
         "count": len(notes),
@@ -628,9 +717,12 @@ def override_report(report_id):
     Records OFFICER_OVERRIDE in timeline and audit log.
     """
     db = get_db()
-    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    report = find_report(db, report_id)
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
 
     data = request.get_json(silent=True) or {}
     reason = (data.get("reason") or "").strip()
@@ -714,9 +806,12 @@ def request_more_info(report_id):
     Officer requests additional information/clarification from the citizen.
     """
     db = get_db()
-    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    report = find_report(db, report_id)
     if not report:
         return jsonify({"success": False, "error": "Report not found"}), 404
+
+    if not _check_officer_permission(report, request.current_user):
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
 
     data = request.get_json(silent=True) or {}
     note = (data.get("note") or data.get("question") or "").strip()

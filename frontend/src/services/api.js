@@ -321,8 +321,12 @@ export async function getHotspots() {
   return requestJson("/insights/hotspots", { method: "GET" })
 }
 
-export async function getTrends() {
-  return requestJson("/insights/trends", { method: "GET" })
+export async function getTrends(params = {}) {
+  const query = new URLSearchParams()
+  if (params.department_id) query.append("department_id", params.department_id)
+  if (params.department) query.append("department", params.department)
+  const qs = query.toString() ? `?${query.toString()}` : ''
+  return requestJson(`/insights/trends${qs}`, { method: "GET" })
 }
 
 // =================================

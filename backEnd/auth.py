@@ -10,7 +10,7 @@ from functools import wraps
 from flask import request, jsonify
 import bcrypt
 import jwt
-from database import get_db, serialize_doc
+from database import get_db, serialize_doc, find_user
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "raabta-ai-civic-intelligence-jwt-secret-key-2026")
 JWT_ALGORITHM = "HS256"
@@ -72,9 +72,7 @@ def token_required(f):
             payload = decode_token(token)
             user_id = payload.get("sub")
             db = get_db()
-            user = db.users.find_one({"_id": user_id})
-            if not user:
-                user = db.users.find_one({"id": user_id})
+            user = find_user(db, user_id)
             if not user:
                 return jsonify({
                     "success": False,
@@ -111,7 +109,7 @@ def optional_auth(f):
                 payload = decode_token(token)
                 user_id = payload.get("sub")
                 db = get_db()
-                user = db.users.find_one({"_id": user_id}) or db.users.find_one({"id": user_id})
+                user = find_user(db, user_id)
                 if user:
                     request.current_user = serialize_doc(user)
             except Exception:

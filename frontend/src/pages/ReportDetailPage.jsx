@@ -84,13 +84,29 @@ export default function ReportDetailPage() {
         </div>
         <h3 className="text-lg font-bold text-slate-900">Report Not Found</h3>
         <p className="text-xs text-slate-500">{error || 'Please check the Tracking ID.'}</p>
-        <Link
-          to="/app/reports"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to My Reports</span>
-        </Link>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={loadReport}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors"
+          >
+            <RefreshCw size={14} />
+            <span>Retry Loading</span>
+          </button>
+          <Link
+            to="/track"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
+          >
+            <span>Track by ID</span>
+          </Link>
+          <Link
+            to="/app/reports"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            <span>My Reports</span>
+          </Link>
+        </div>
       </div>
     )
   }

@@ -16,10 +16,13 @@ export default function GovQueuePage() {
   const [departments, setDepartments] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const isOfficer = currentUser?.role === 'officer'
+  const officerDept = currentUser?.department_id || currentUser?.department || ''
+
   // Filter states
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get('priority') || 'all')
   const [deptFilter, setDeptFilter] = useState(
-    searchParams.get('department') || (currentUser?.role === 'officer' && currentUser?.department_id ? currentUser.department_id : 'all')
+    isOfficer && officerDept ? officerDept : (searchParams.get('department') || 'all')
   )
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
   const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assigned') || 'all')
@@ -27,16 +30,24 @@ export default function GovQueuePage() {
   const [areaFilter, setAreaFilter] = useState(searchParams.get('area') || '')
   const [searchQuery, setSearchQuery] = useState('')
 
+  // Sync department filter if currentUser loads asynchronously
+  useEffect(() => {
+    if (isOfficer && officerDept && deptFilter !== officerDept) {
+      setDeptFilter(officerDept)
+    }
+  }, [isOfficer, officerDept])
+
   async function loadData() {
     setLoading(true)
     try {
+      const activeDept = isOfficer && officerDept ? officerDept : deptFilter
       const [deptRes, reportsRes] = await Promise.all([
         api.getDepartments().catch(() => ({ departments: [] })),
         api.getReports({
           limit: 150,
           sort_by: 'priority_desc',
-          department_id: deptFilter === 'all' ? '' : deptFilter,
-          department: deptFilter === 'all' ? '' : deptFilter,
+          department_id: activeDept === 'all' ? '' : activeDept,
+          department: activeDept === 'all' ? '' : activeDept,
           status: statusFilter === 'all' ? '' : statusFilter,
           priority: priorityFilter === 'all' ? '' : priorityFilter,
           repeated: repeatedFilter === 'true' ? 'true' : repeatedFilter === 'false' ? 'false' : '',
@@ -89,13 +100,19 @@ export default function GovQueuePage() {
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
             <ShieldAlert size={13} className="text-emerald-600" />
-            <span>Operational Triage Queue</span>
+            <span>
+              {isOfficer
+                ? `Operational Queue — ${currentUser?.department_name || officerDept || 'Duty Officer Desk'}`
+                : 'System-Wide Triage Queue'}
+            </span>
           </div>
           <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
-            Reports Needing Attention
+            {isOfficer ? 'Department Priority Queue' : 'Reports Needing Attention'}
           </h1>
           <p className="mt-1 text-xs text-slate-500">
-            Sorted strictly by Risk Priority (Descending) and Submission Time (Ascending) for compliant SLA resolution.
+            {isOfficer
+              ? `Operational incidents assigned to ${currentUser?.department_name || officerDept}. Sorted by Risk Priority.`
+              : 'Sorted strictly by Risk Priority (Descending) and Submission Time (Ascending) for compliant SLA resolution.'}
           </p>
         </div>
 
@@ -121,7 +138,33 @@ export default function GovQueuePage() {
       </section>
 
       {/* Filter Toolbar */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+      <section className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
+        {/* Quick Status Tabs */}
+        <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick View:</span>
+          {[
+            { id: 'all', label: 'All Incidents' },
+            { id: 'submitted', label: 'New / Unassigned' },
+            { id: 'in_progress', label: 'In Progress' },
+            { id: 'in_review', label: 'Needs Info' },
+            { id: 'disputed', label: 'Citizen Disputed' },
+            { id: 'resolved', label: 'Resolved' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setStatusFilter(tab.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === tab.id
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <div className="flex items-center gap-1.5 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
             <Filter size={13} />
@@ -135,25 +178,33 @@ export default function GovQueuePage() {
             className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
           >
             <option value="all">All Priorities</option>
-            <option value="critical">Critical (&ge; 75)</option>
+            <option value="critical">Critical (≥ 75)</option>
             <option value="high">High (50 - 74)</option>
             <option value="medium">Medium (25 - 49)</option>
             <option value="low">Low (&lt; 25)</option>
           </select>
 
-          {/* Department Filter */}
-          <select
-            value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
-          >
-            <option value="all">All Departments</option>
-            {departments.map((d) => (
-              <option key={d.id || d._id || d.code || d.name} value={d.code || d.name || d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+          {/* Department Filter (Locked for Officer) */}
+          {isOfficer ? (
+            <div className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold flex items-center gap-1.5 text-xs">
+              <Building size={12} className="text-emerald-600" />
+              <span>Dept: {currentUser?.department_name || officerDept || 'Assigned'}</span>
+              <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-mono font-bold">Locked</span>
+            </div>
+          ) : (
+            <select
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+            >
+              <option value="all">All Departments</option>
+              {departments.map((d) => (
+                <option key={d.id || d._id || d.code || d.name} value={d.code || d.name || d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Status Filter */}
           <select
@@ -274,7 +325,7 @@ export default function GovQueuePage() {
                           {report.tracking_id}
                         </span>
                         <Link
-                          to={`/gov/reports/${report.id || report._id}`}
+                          to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
                           className="font-bold text-slate-900 hover:text-emerald-700 line-clamp-1 transition-colors"
                         >
                           {report.title}
@@ -342,7 +393,7 @@ export default function GovQueuePage() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <Link
-                          to={`/gov/reports/${report.id || report._id}`}
+                          to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
                           className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors inline-block"
                         >
                           Manage
