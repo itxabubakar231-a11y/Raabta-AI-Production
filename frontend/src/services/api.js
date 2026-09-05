@@ -229,10 +229,18 @@ export async function getDepartments() {
   return requestJson("/departments", { method: "GET" })
 }
 
+export async function getOfficers(params = {}) {
+  const query = new URLSearchParams()
+  if (params.department_id) query.append('department_id', params.department_id)
+  const qs = query.toString() ? `?${query.toString()}` : ''
+  return requestJson(`/departments/officers${qs}`, { method: "GET" })
+}
+
 export async function getOperationsQueue(params = {}) {
   const query = new URLSearchParams()
   if (params.department_id) query.append('department_id', params.department_id)
   if (params.status && params.status !== 'all') query.append('status', params.status)
+  if (params.assigned_to) query.append('assigned_to', params.assigned_to)
   if (params.min_risk) query.append('min_risk', params.min_risk)
 
   const qs = query.toString() ? `?${query.toString()}` : ''
@@ -247,19 +255,19 @@ export async function updateReportStatus(reportId, { status, notes }) {
   })
 }
 
-export async function assignOfficer(reportId, { officer_id, officer_name }) {
+export async function assignOfficer(reportId, { officer_id, officer_name, department_id, department_name, reason, notes }) {
   return requestJson(`/departments/reports/${reportId}/assign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ officer_id, officer_name })
+    body: JSON.stringify({ officer_id, officer_name, department_id, department_name, reason, notes })
   })
 }
 
-export async function resolveReportWithProof(reportId, { resolution_notes, resolution_image_url }) {
+export async function resolveReportWithProof(reportId, { resolution_notes, resolution_image_url, resolution_image_base64 }) {
   return requestJson(`/departments/reports/${reportId}/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ resolution_notes, resolution_image_url })
+    body: JSON.stringify({ resolution_notes, resolution_image_url, resolution_image_base64 })
   })
 }
 

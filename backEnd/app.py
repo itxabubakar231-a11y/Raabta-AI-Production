@@ -106,6 +106,8 @@ app.register_blueprint(reports_bp, url_prefix="/reports", name="reports_direct")
 # 4. Department Operations Command Center Blueprints
 app.register_blueprint(department_bp, url_prefix="/api/departments", name="departments_api")
 app.register_blueprint(department_bp, url_prefix="/departments", name="departments_direct")
+app.register_blueprint(department_bp, url_prefix="/api/department", name="department_singular_api")
+app.register_blueprint(department_bp, url_prefix="/department", name="department_singular_direct")
 
 # 5. Proximity Clustering Blueprints
 app.register_blueprint(cluster_bp, url_prefix="/api/clusters", name="clusters_api")

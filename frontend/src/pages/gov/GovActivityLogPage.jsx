@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   FileText, Shield, Clock, RefreshCw, AlertCircle, CheckCircle2,
   Filter, Search, UserCheck, Edit3
@@ -28,27 +29,66 @@ export default function GovActivityLogPage() {
   }, [])
 
   const formatUser = (log) => {
-    if (log.user_email) return log.user_email
-    if (typeof log.user === 'object' && log.user !== null) {
-      return log.user.email || log.user.full_name || log.user.name || log.user.id || 'User'
+    if (!log) return 'System Agent'
+    if (log.actor_name) {
+      const role = (log.actor_role || '').toUpperCase()
+      return role ? `${log.actor_name} (${role})` : log.actor_name
+    }
+    if (log.actor_email) return log.actor_email
+    if (log.user_email) return String(log.user_email)
+    if (log.user && typeof log.user === 'object') {
+      return log.user.full_name || log.user.name || log.user.email || 'User'
     }
     if (typeof log.user === 'string' && log.user) return log.user
-    if (log.author) return typeof log.author === 'object' ? (log.author.name || log.author.email || 'Author') : log.author
+    if (log.author && typeof log.author === 'object') {
+      return log.author.name || log.author.email || 'Author'
+    }
+    if (log.author) return String(log.author)
+    if (log.actor_role) {
+      return `${log.actor_role.toUpperCase()}${log.actor_id ? ` (#${String(log.actor_id).slice(0, 6)})` : ''}`
+    }
     return 'System Agent'
   }
 
+  const formatTarget = (log) => {
+    if (!log) return '-'
+    const tid = log.tracking_id || log.report_id || log.target_tracking_id || (log.details && (log.details.tracking_id || log.details.report_id))
+    if (tid) return String(tid)
+    if (log.target_user_id) return `User #${String(log.target_user_id).slice(0, 8)}`
+    return '-'
+  }
+
   const formatDetails = (log) => {
+    if (!log) return '-'
     if (typeof log.details === 'object' && log.details !== null) {
-      if (log.details.email) return `Email: ${log.details.email}`
-      if (log.details.reason) return `Reason: ${log.details.reason}`
-      if (log.details.tracking_id) return `Tracking ID: ${log.details.tracking_id}`
-      if (log.details.note) return log.details.note
-      return JSON.stringify(log.details)
+      const d = log.details
+      if (d.handover_reason) return `Handover: ${d.handover_reason} (To: ${d.officer_name || d.department_id})`
+      if (d.reason) return `Reason: ${d.reason}`
+      if (d.note) return String(d.note)
+      if (d.notes) return String(d.notes)
+      if (d.feedback) return `Citizen feedback: "${d.feedback}" ${d.rating ? `(${d.rating}/5 stars)` : ''}`
+      if (d.new_status) return `Status changed to ${d.new_status}`
+      if (d.tracking_id && d.risk_score !== undefined) {
+        return `Report ${d.tracking_id} | Risk Score: ${d.risk_score}`
+      }
+      if (d.new_role) return `Role assigned: ${d.new_role} ${d.department_id ? `(${d.department_id})` : ''}`
+      if (d.email) return `Email: ${d.email}`
+      try {
+        return JSON.stringify(d)
+      } catch {
+        return 'Details recorded'
+      }
     }
     if (log.details) return String(log.details)
     if (log.notes) return typeof log.notes === 'object' ? JSON.stringify(log.notes) : String(log.notes)
     if (log.reason) return typeof log.reason === 'object' ? JSON.stringify(log.reason) : String(log.reason)
-    if (log.payload) return JSON.stringify(log.payload)
+    if (log.payload) {
+      try {
+        return JSON.stringify(log.payload)
+      } catch {
+        return '-'
+      }
+    }
     return '-'
   }
 
@@ -63,7 +103,7 @@ export default function GovActivityLogPage() {
 
     const userStr = formatUser(log).toLowerCase()
     const detailStr = formatDetails(log).toLowerCase()
-    const trackingStr = (log.tracking_id || log.report_id || '').toLowerCase()
+    const trackingStr = formatTarget(log).toLowerCase()
     const actStr = (log.action || log.event || '').toLowerCase()
 
     return (
@@ -186,7 +226,20 @@ export default function GovActivityLogPage() {
                       </td>
 
                       <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                        {log.tracking_id || log.report_id || '-'}
+                        {(() => {
+                          const target = formatTarget(log)
+                          if (target.startsWith('RA-')) {
+                            return (
+                              <Link
+                                to={`/gov/reports/${target}`}
+                                className="font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                              >
+                                {target}
+                              </Link>
+                            )
+                          }
+                          return target
+                        })()}
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-600 max-w-md break-words">

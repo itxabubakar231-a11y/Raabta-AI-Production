@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 
 from database import get_db, serialize_doc
-from auth import token_required, role_required
+from auth import token_required, role_required, hash_password
 from services.ai_service import verify_resolution_ai
 
 department_bp = Blueprint("department_bp", __name__)
@@ -61,6 +61,49 @@ DEFAULT_DEPARTMENTS = [
     }
 ]
 
+DEFAULT_OFFICERS = [
+    {
+        "email": "officer@raabta.gov.pk",
+        "full_name": "Engr. Tariq Mehmood",
+        "phone": "+923001234567",
+        "role": "officer",
+        "department_id": "IESCO",
+        "department_name": "Islamabad Electric Supply Company (IESCO)"
+    },
+    {
+        "email": "officer.cda@raabta.gov.pk",
+        "full_name": "Engr. Usman Qureshi",
+        "phone": "+923007654321",
+        "role": "officer",
+        "department_id": "CDA",
+        "department_name": "Capital Development Authority (CDA)"
+    },
+    {
+        "email": "officer.wasa@raabta.gov.pk",
+        "full_name": "Asim Riaz",
+        "phone": "+923019876543",
+        "role": "officer",
+        "department_id": "WASA",
+        "department_name": "Water and Sanitation Agency (WASA)"
+    },
+    {
+        "email": "officer.sngpl@raabta.gov.pk",
+        "full_name": "Hamza Abbasi",
+        "phone": "+923021122334",
+        "role": "officer",
+        "department_id": "SNGPL",
+        "department_name": "Sui Northern Gas Pipelines Limited (SNGPL)"
+    },
+    {
+        "email": "officer.iwmb@raabta.gov.pk",
+        "full_name": "Malik Nadeem",
+        "phone": "+923035566778",
+        "role": "officer",
+        "department_id": "IWMB",
+        "department_name": "Waste Management & Cleanliness (IWMC)"
+    }
+]
+
 
 def ensure_departments_seeded(db):
     """Ensures baseline government departments exist in the database."""
@@ -74,10 +117,33 @@ def ensure_departments_seeded(db):
             db.departments.insert_one(doc)
 
 
+def ensure_officers_seeded(db):
+    """Ensures departmental field duty officers exist in the user database."""
+    now = datetime.now(timezone.utc).isoformat()
+    for o in DEFAULT_OFFICERS:
+        existing = db.users.find_one({"email": o["email"]})
+        if not existing:
+            user_id = str(uuid.uuid4())
+            db.users.insert_one({
+                "_id": user_id,
+                "id": user_id,
+                "email": o["email"],
+                "password_hash": hash_password("Password123!"),
+                "full_name": o["full_name"],
+                "phone": o["phone"],
+                "role": o["role"],
+                "department_id": o["department_id"],
+                "department_name": o["department_name"],
+                "is_verified": True,
+                "created_at": now
+            })
+
+
 @department_bp.route("", methods=["GET"], strict_slashes=False)
 def list_departments():
     db = get_db()
     ensure_departments_seeded(db)
+    ensure_officers_seeded(db)
 
     depts = list(db.departments.find({}))
     results = []
@@ -101,7 +167,46 @@ def list_departments():
     return jsonify({"success": True, "departments": results}), 200
 
 
+@department_bp.route("/officers", methods=["GET"], strict_slashes=False)
+@token_required
+@role_required("officer", "admin")
+def list_officers():
+    """Returns roster of active duty officers across all civic departments."""
+    db = get_db()
+    ensure_officers_seeded(db)
+
+    dept_filter = request.args.get("department_id") or request.args.get("department")
+    query = {"role": "officer"}
+    if dept_filter and dept_filter != "all":
+        query["$or"] = [
+            {"department_id": dept_filter},
+            {"department_id": {"$regex": f"^{dept_filter}$", "$options": "i"}},
+            {"department_name": {"$regex": dept_filter, "$options": "i"}}
+        ]
+
+    officers = list(db.users.find(query))
+    officers_list = []
+    for off in officers:
+        oid = str(off.get("_id") or off.get("id"))
+        active_cases = db.civic_reports.count_documents({
+            "assigned_to": oid,
+            "status": {"$in": ["assigned", "in_progress"]}
+        })
+        officers_list.append({
+            "id": oid,
+            "email": off.get("email"),
+            "full_name": off.get("full_name"),
+            "phone": off.get("phone"),
+            "department_id": off.get("department_id"),
+            "department_name": off.get("department_name"),
+            "active_cases": active_cases
+        })
+
+    return jsonify({"success": True, "count": len(officers_list), "officers": officers_list}), 200
+
+
 @department_bp.route("/queue", methods=["GET"], strict_slashes=False)
+@department_bp.route("/operations-queue", methods=["GET"], strict_slashes=False)
 @token_required
 @role_required("officer", "admin")
 def get_operations_queue():
@@ -109,44 +214,96 @@ def get_operations_queue():
     db = get_db()
     current_user = request.current_user
     user_dept = current_user.get("department_id")
+    user_id = str(current_user.get("id"))
 
-    query = {
-        "status": {"$in": ["submitted", "in_review", "assigned", "in_progress", "disputed"]}
-    }
+    conditions = [
+        {"status": {"$in": ["submitted", "in_review", "assigned", "in_progress", "disputed"]}}
+    ]
 
-    # Department filter
+    # Department filter: allow 'all' or explicit ID, or default to officer's department if non-admin
     dept_param = request.args.get("department_id") or request.args.get("department")
     if dept_param and dept_param != "all":
-        query["$or"] = [
-            {"department_id": {"$regex": f"^{dept_param}$", "$options": "i"}},
-            {"department_id": dept_param},
-            {"department_name": {"$regex": dept_param, "$options": "i"}}
-        ]
+        conditions.append({
+            "$or": [
+                {"department_id": {"$regex": f"^{dept_param}$", "$options": "i"}},
+                {"department_id": dept_param},
+                {"department_name": {"$regex": dept_param, "$options": "i"}}
+            ]
+        })
     elif not dept_param and user_dept and current_user.get("role") != "admin":
-        query["$or"] = [
-            {"department_id": {"$regex": f"^{user_dept}$", "$options": "i"}},
-            {"department_id": user_dept},
-            {"department_name": {"$regex": user_dept, "$options": "i"}}
-        ]
+        conditions.append({
+            "$or": [
+                {"department_id": {"$regex": f"^{user_dept}$", "$options": "i"}},
+                {"department_id": user_dept},
+                {"department_name": {"$regex": user_dept, "$options": "i"}}
+            ]
+        })
 
-    # Additional filters
+    # Status filter
     status_filter = request.args.get("status")
     if status_filter and status_filter != "all":
-        query["status"] = status_filter
+        conditions.append({"status": status_filter})
+
+    # Assignment filter
+    assigned_to = request.args.get("assigned_to") or request.args.get("officer_id")
+    if assigned_to:
+        if assigned_to in ["me", "mine"]:
+            conditions.append({
+                "$or": [
+                    {"assigned_to": user_id},
+                    {"assigned_officer_id": user_id}
+                ]
+            })
+        elif assigned_to == "unassigned":
+            conditions.append({
+                "$or": [
+                    {"assigned_to": {"$exists": False}},
+                    {"assigned_to": None},
+                    {"assigned_to": ""},
+                    {"assigned_officer_id": {"$exists": False}},
+                    {"assigned_officer_id": None},
+                    {"assigned_officer_id": ""}
+                ]
+            })
+        elif assigned_to != "all":
+            conditions.append({
+                "$or": [
+                    {"assigned_to": assigned_to},
+                    {"assigned_officer_id": assigned_to}
+                ]
+            })
 
     min_risk = request.args.get("min_risk")
     if min_risk:
         try:
-            query["civic_risk_score.score"] = {"$gte": int(min_risk)}
+            conditions.append({"civic_risk_score.score": {"$gte": int(min_risk)}})
         except ValueError:
             pass
 
-    # Sort strictly by Civic Risk Score descending (highest risk first)
-    reports = list(db.civic_reports.find(query).sort("civic_risk_score.score", -1).limit(50))
+    query = {"$and": conditions} if len(conditions) > 1 else conditions[0]
+
+    # Fetch and sort strictly by Civic Risk Score descending, then created_at ascending
+    raw_reports = list(db.civic_reports.find(query))
+    def queue_sort_key(r):
+        score = (r.get("civic_risk_score") or {}).get("score") or 0
+        created = r.get("created_at") or ""
+        return (-score, created)
+
+    raw_reports.sort(key=queue_sort_key)
+    reports = raw_reports[:100]
+
+    # Calculate real operational queue statistics
+    stats = {
+        "pending": sum(1 for r in raw_reports if r.get("status") in ["submitted", "in_review"]),
+        "in_progress": sum(1 for r in raw_reports if r.get("status") in ["assigned", "in_progress"]),
+        "disputed": sum(1 for r in raw_reports if r.get("status") == "disputed"),
+        "critical": sum(1 for r in raw_reports if ((r.get("civic_risk_score") or {}).get("score") or 0) >= 75)
+    }
 
     return jsonify({
         "success": True,
         "count": len(reports),
+        "stats": stats,
         "queue": serialize_doc(reports)
     }), 200
 
@@ -170,6 +327,7 @@ def update_report_status(report_id):
 
     now = datetime.now(timezone.utc).isoformat()
     actor_name = request.current_user.get("full_name", "Officer")
+    actor_role = request.current_user.get("role", "officer").upper()
 
     db.civic_reports.update_one(
         {"_id": report.get("_id")},
@@ -178,7 +336,7 @@ def update_report_status(report_id):
             "$push": {
                 "timeline": {
                     "action": f"STATUS_CHANGED_TO_{new_status.upper()}",
-                    "actor_role": request.current_user.get("role", "officer").upper(),
+                    "actor_role": actor_role,
                     "actor_name": actor_name,
                     "details": notes or f"Status updated to {new_status}",
                     "timestamp": now
@@ -186,6 +344,25 @@ def update_report_status(report_id):
             }
         }
     )
+
+    # Immutable Audit Log
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": str(request.current_user.get("id")),
+        "actor_role": actor_role,
+        "actor_name": actor_name,
+        "action": f"STATUS_{new_status.upper()}",
+        "tracking_id": report.get("tracking_id"),
+        "report_id": str(report.get("_id")),
+        "details": {
+            "tracking_id": report.get("tracking_id"),
+            "old_status": report.get("status"),
+            "new_status": new_status,
+            "notes": notes
+        },
+        "timestamp": now,
+        "created_at": now
+    })
 
     # Notify citizen
     if report.get("citizen_id"):
@@ -218,28 +395,79 @@ def assign_report(report_id):
     data = request.get_json(silent=True) or {}
     officer_id = data.get("officer_id") or request.current_user.get("id")
     officer_name = data.get("officer_name") or request.current_user.get("full_name")
+    department_id = data.get("department_id")
+    department_name = data.get("department_name")
+    handover_reason = (data.get("reason") or data.get("notes") or "").strip()
 
     now = datetime.now(timezone.utc).isoformat()
+    actor_role = request.current_user.get("role", "officer").upper()
+    actor_name = request.current_user.get("full_name", "Duty Officer")
+
+    update_fields = {
+        "assigned_to": str(officer_id),
+        "assigned_officer_id": str(officer_id),
+        "assigned_officer_name": officer_name,
+        "updated_at": now
+    }
+
+    # If current status is submitted or in_review, advance to assigned
+    if report.get("status") in ["submitted", "in_review"]:
+        update_fields["status"] = "assigned"
+
+    dept_changed = False
+    old_dept = report.get("department_name") or report.get("department_id") or "Unassigned"
+    if department_id and department_id != report.get("department_id"):
+        dept_changed = True
+        update_fields["department_id"] = department_id
+        if department_name:
+            update_fields["department_name"] = department_name
+
+    action_type = "DEPARTMENT_REASSIGNED" if dept_changed else "OFFICER_ASSIGNED"
+    if dept_changed:
+        timeline_details = f"Reassigned from {old_dept} to {department_name or department_id} (Duty Officer: {officer_name})."
+        if handover_reason:
+            timeline_details += f" Handover Reason: {handover_reason}"
+    else:
+        timeline_details = f"Assigned to Duty Officer {officer_name}."
+        if handover_reason:
+            timeline_details += f" Notes: {handover_reason}"
+
     db.civic_reports.update_one(
         {"_id": report.get("_id")},
         {
-            "$set": {
-                "assigned_to": officer_id,
-                "assigned_officer_name": officer_name,
-                "status": "assigned",
-                "updated_at": now
-            },
+            "$set": update_fields,
             "$push": {
                 "timeline": {
-                    "action": "OFFICER_ASSIGNED",
-                    "actor_role": "DISPATCH",
-                    "actor_name": request.current_user.get("full_name"),
-                    "details": f"Assigned to Duty Officer {officer_name}.",
+                    "action": action_type,
+                    "actor_role": actor_role,
+                    "actor_name": actor_name,
+                    "details": timeline_details,
                     "timestamp": now
                 }
             }
         }
     )
+
+    # Immutable Audit Log
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": str(request.current_user.get("id")),
+        "actor_role": actor_role,
+        "actor_name": actor_name,
+        "action": action_type,
+        "tracking_id": report.get("tracking_id"),
+        "report_id": str(report.get("_id")),
+        "details": {
+            "tracking_id": report.get("tracking_id"),
+            "officer_id": str(officer_id),
+            "officer_name": officer_name,
+            "department_id": department_id or report.get("department_id"),
+            "old_department": old_dept,
+            "handover_reason": handover_reason
+        },
+        "timestamp": now,
+        "created_at": now
+    })
 
     return jsonify({
         "success": True,
@@ -260,6 +488,10 @@ def mark_resolved_with_proof(report_id):
     data = request.get_json(silent=True) or {}
     notes = (data.get("resolution_notes") or data.get("notes") or "").strip()
     after_image_url = data.get("resolution_image_url") or data.get("after_image_url")
+    after_image_base64 = data.get("resolution_image_base64") or data.get("after_image_base64")
+
+    if not notes:
+        return jsonify({"success": False, "error": "Resolution description/notes are required."}), 400
 
     now = datetime.now(timezone.utc).isoformat()
     officer_name = request.current_user.get("full_name", "Duty Officer")
@@ -277,6 +509,7 @@ def mark_resolved_with_proof(report_id):
         "officer_name": officer_name,
         "resolution_notes": notes,
         "after_image_url": after_image_url,
+        "after_image_base64": after_image_base64,
         "ai_confidence_score": ai_check.get("confidence_score", 0.85),
         "ai_summary": ai_check.get("summary"),
         "resolved_at": now
@@ -295,12 +528,32 @@ def mark_resolved_with_proof(report_id):
                     "action": "WORK_COMPLETED_PENDING_VERIFICATION",
                     "actor_role": "OFFICER",
                     "actor_name": officer_name,
-                    "details": f"Officer resolved issue. AI Quality Check: {int(ai_check.get('confidence_score', 0.85)*100)}%. Sent to citizen for verification.",
+                    "details": f"Officer resolved issue with field proof. AI Quality Check: {int(ai_check.get('confidence_score', 0.85)*100)}%. Sent to citizen for verification.",
                     "timestamp": now
                 }
             }
         }
     )
+
+    # Immutable Audit Log
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": str(request.current_user.get("id")),
+        "actor_role": "OFFICER",
+        "actor_name": officer_name,
+        "action": "OFFICER_RESOLVED",
+        "tracking_id": report.get("tracking_id"),
+        "report_id": str(report.get("_id")),
+        "details": {
+            "tracking_id": report.get("tracking_id"),
+            "officer_name": officer_name,
+            "notes": notes,
+            "has_proof_photo": bool(after_image_url or after_image_base64),
+            "ai_confidence": ai_check.get("confidence_score", 0.85)
+        },
+        "timestamp": now,
+        "created_at": now
+    })
 
     # Notify citizen that their confirmation is needed
     if report.get("citizen_id"):
@@ -366,7 +619,6 @@ def get_internal_notes(report_id):
     }), 200
 
 
-
 @department_bp.route("/reports/<report_id>/override", methods=["POST"], strict_slashes=False)
 @token_required
 @role_required("officer", "admin")
@@ -394,7 +646,13 @@ def override_report(report_id):
     actor_id = request.current_user.get("id")
 
     update_fields = {"updated_at": now}
-    override_details = {"actor_id": actor_id, "actor_name": actor_name, "reason": reason, "timestamp": now}
+    override_details = {
+        "tracking_id": report.get("tracking_id"),
+        "actor_id": actor_id,
+        "actor_name": actor_name,
+        "reason": reason,
+        "timestamp": now
+    }
 
     if new_dept:
         update_fields["department_id"] = new_dept
@@ -431,12 +689,15 @@ def override_report(report_id):
 
     db.audit_logs.insert_one({
         "_id": str(uuid.uuid4()),
-        "actor_id": actor_id,
+        "actor_id": str(actor_id),
         "actor_role": request.current_user.get("role", "officer").upper(),
+        "actor_name": actor_name,
         "action": "OFFICER_OVERRIDE",
+        "tracking_id": report.get("tracking_id"),
         "report_id": str(report.get("_id")),
         "details": override_details,
-        "timestamp": now
+        "timestamp": now,
+        "created_at": now
     })
 
     return jsonify({
@@ -464,6 +725,7 @@ def request_more_info(report_id):
 
     now = datetime.now(timezone.utc).isoformat()
     actor_name = request.current_user.get("full_name", "Duty Officer")
+    actor_role = request.current_user.get("role", "officer").upper()
 
     db.civic_reports.update_one(
         {"_id": report.get("_id")},
@@ -481,7 +743,7 @@ def request_more_info(report_id):
             "$push": {
                 "timeline": {
                     "action": "INFORMATION_REQUESTED",
-                    "actor_role": "OFFICER",
+                    "actor_role": actor_role,
                     "actor_name": actor_name,
                     "details": f"Officer requested more information: {note}",
                     "timestamp": now
@@ -489,6 +751,24 @@ def request_more_info(report_id):
             }
         }
     )
+
+    # Immutable Audit Log
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": str(request.current_user.get("id")),
+        "actor_role": actor_role,
+        "actor_name": actor_name,
+        "action": "CITIZEN_INFO_REQUESTED",
+        "tracking_id": report.get("tracking_id"),
+        "report_id": str(report.get("_id")),
+        "details": {
+            "tracking_id": report.get("tracking_id"),
+            "officer_name": actor_name,
+            "note": note
+        },
+        "timestamp": now,
+        "created_at": now
+    })
 
     if report.get("citizen_id"):
         db.notifications.insert_one({

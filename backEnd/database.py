@@ -169,6 +169,19 @@ class ResilientCollection:
         if not query:
             return True
         for qk, qv in query.items():
+            if qk == "$or":
+                if not isinstance(qv, list) or not any(self._matches(doc, subq) for subq in qv):
+                    return False
+                continue
+            if qk == "$and":
+                if not isinstance(qv, list) or not all(self._matches(doc, subq) for subq in qv):
+                    return False
+                continue
+            if qk == "$nor":
+                if not isinstance(qv, list) or any(self._matches(doc, subq) for subq in qv):
+                    return False
+                continue
+
             if (qk == "_id" or qk == "id") and not isinstance(qv, dict):
                 doc_id = str(doc.get("_id", doc.get("id", "")))
                 target_id = str(qv)
@@ -206,6 +219,11 @@ class ResilientCollection:
                     options = qv.get("$options", "")
                     flags = re.IGNORECASE if "i" in options else 0
                     if not doc_val or not re.search(pattern, str(doc_val), flags):
+                        return False
+                elif "$exists" in qv:
+                    expected = bool(qv["$exists"])
+                    actual = doc_val is not None
+                    if actual != expected:
                         return False
             else:
                 if doc_val != qv:
@@ -472,6 +490,62 @@ def ensure_baseline_system(db):
                 "phone": "+92 300 5123456",
                 "role": "citizen",
                 "department_id": None,
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "cda-officer-seed-uuid-001",
+                "id": "cda-officer-seed-uuid-001",
+                "email": "officer.cda@raabta.gov.pk",
+                "password_hash": "$2b$12$NmnWKbgVIGevbS2aYH9hY.uzLaCi6CnGM4mpT7bcwdqDvqm6ghXc.",
+                "full_name": "Engr. Usman Qureshi",
+                "phone": "+92 300 7654321",
+                "role": "officer",
+                "department_id": "CDA",
+                "department_name": "Capital Development Authority (CDA)",
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "wasa-officer-seed-uuid-002",
+                "id": "wasa-officer-seed-uuid-002",
+                "email": "officer.wasa@raabta.gov.pk",
+                "password_hash": "$2b$12$NmnWKbgVIGevbS2aYH9hY.uzLaCi6CnGM4mpT7bcwdqDvqm6ghXc.",
+                "full_name": "Asim Riaz",
+                "phone": "+92 301 9876543",
+                "role": "officer",
+                "department_id": "WASA",
+                "department_name": "Water and Sanitation Agency (WASA)",
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "sngpl-officer-seed-uuid-003",
+                "id": "sngpl-officer-seed-uuid-003",
+                "email": "officer.sngpl@raabta.gov.pk",
+                "password_hash": "$2b$12$NmnWKbgVIGevbS2aYH9hY.uzLaCi6CnGM4mpT7bcwdqDvqm6ghXc.",
+                "full_name": "Hamza Abbasi",
+                "phone": "+92 302 1122334",
+                "role": "officer",
+                "department_id": "SNGPL",
+                "department_name": "Sui Northern Gas Pipelines Limited (SNGPL)",
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "iwmc-officer-seed-uuid-004",
+                "id": "iwmc-officer-seed-uuid-004",
+                "email": "officer.iwmb@raabta.gov.pk",
+                "password_hash": "$2b$12$NmnWKbgVIGevbS2aYH9hY.uzLaCi6CnGM4mpT7bcwdqDvqm6ghXc.",
+                "full_name": "Malik Nadeem",
+                "phone": "+92 303 5566778",
+                "role": "officer",
+                "department_id": "IWMB",
+                "department_name": "Waste Management & Cleanliness (IWMC)",
                 "is_active": True,
                 "created_at": now,
                 "updated_at": now

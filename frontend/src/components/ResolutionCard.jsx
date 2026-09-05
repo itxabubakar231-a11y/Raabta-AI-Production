@@ -59,55 +59,66 @@ export default function ResolutionCard({ report, onUpdated }) {
       </div>
 
       {/* Show Officer's Completed Work Details */}
-      {resolution.officer_name && (
-        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5 text-xs">
-          <div className="flex items-center justify-between text-slate-700">
-            <span>Resolved by: <strong className="text-slate-900 font-bold">{resolution.officer_name}</strong></span>
-            <span className="text-slate-400 text-[11px] font-medium">{resolution.resolved_at ? new Date(resolution.resolved_at).toLocaleDateString() : ''}</span>
-          </div>
-          {resolution.resolution_notes && (
-            <p className="text-slate-700 text-xs italic bg-white p-3 rounded-lg border border-slate-200 leading-relaxed shadow-2xs">
-              "{resolution.resolution_notes}"
-            </p>
-          )}
+      {(() => {
+        const officerName = resolution.officer_name || resolution.resolved_by || report.assigned_officer_name || 'Duty Officer'
+        const beforeImg = report.evidence?.image_base64 || report.evidence?.image_url
+        const afterImg = resolution.after_image_base64 || resolution.after_image_url
+        const hasWorkDetails = resolution.resolved_at || resolution.resolution_notes || afterImg || isResolved || isClosed || isDisputed
 
-          {/* AI Verification Score */}
-          {resolution.ai_confidence_score && (
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-medium">
-              <Sparkles size={14} className="text-indigo-600 shrink-0" />
-              <span>
-                AI Vision Confidence: <strong>{Math.round(resolution.ai_confidence_score * 100)}%</strong> — {resolution.ai_summary || 'Resolution verified against initial hazard.'}
+        if (!hasWorkDetails) return null
+
+        return (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between text-slate-700">
+              <span>Resolved by: <strong className="text-slate-900 font-bold">{officerName}</strong></span>
+              <span className="text-slate-400 text-[11px] font-medium">
+                {resolution.resolved_at ? new Date(resolution.resolved_at).toLocaleDateString() : 'Recent'}
               </span>
             </div>
-          )}
+            {resolution.resolution_notes && (
+              <p className="text-slate-700 text-xs italic bg-white p-3 rounded-lg border border-slate-200 leading-relaxed shadow-2xs">
+                "{resolution.resolution_notes}"
+              </p>
+            )}
 
-          {/* Before & After Photo Comparison */}
-          {(report.evidence?.image_url || resolution.after_image_url) && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              {report.evidence?.image_url && (
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">Before (Reported Incident)</span>
-                  <img
-                    src={report.evidence.image_url}
-                    alt="Before"
-                    className="mt-1 h-36 w-full object-cover rounded-xl border border-slate-200 shadow-2xs"
-                  />
-                </div>
-              )}
-              {resolution.after_image_url && (
-                <div>
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase">After (Field Resolution Proof)</span>
-                  <img
-                    src={resolution.after_image_url}
-                    alt="After"
-                    className="mt-1 h-36 w-full object-cover rounded-xl border border-emerald-300 shadow-2xs"
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            {/* AI Verification Score */}
+            {resolution.ai_confidence_score && (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] font-medium">
+                <Sparkles size={14} className="text-indigo-600 shrink-0" />
+                <span>
+                  AI Vision Confidence: <strong>{Math.round(resolution.ai_confidence_score * 100)}%</strong> — {resolution.ai_summary || 'Resolution verified against initial hazard.'}
+                </span>
+              </div>
+            )}
+
+            {/* Before & After Photo Comparison */}
+            {(beforeImg || afterImg) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                {beforeImg && (
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Before (Reported Incident)</span>
+                    <img
+                      src={beforeImg}
+                      alt="Before"
+                      className="mt-1 h-36 w-full object-cover rounded-xl border border-slate-200 shadow-2xs"
+                    />
+                  </div>
+                )}
+                {afterImg && (
+                  <div>
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase">After (Field Resolution Proof)</span>
+                    <img
+                      src={afterImg}
+                      alt="After"
+                      className="mt-1 h-36 w-full object-cover rounded-xl border border-emerald-300 shadow-2xs"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Citizen Verification Decision Controls */}
       {isResolved && (

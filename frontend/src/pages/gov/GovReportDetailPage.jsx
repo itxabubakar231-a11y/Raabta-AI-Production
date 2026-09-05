@@ -33,10 +33,23 @@ export default function GovReportDetailPage() {
   const [requestInfoNote, setRequestInfoNote] = useState('')
   const [requestInfoSubmitting, setRequestInfoSubmitting] = useState(false)
 
+  // Assignment Modal
+  const [showAssignModal, setShowAssignModal] = useState(false)
+  const [assignDept, setAssignDept] = useState('')
+  const [assignOfficerId, setAssignOfficerId] = useState('')
+  const [assignOfficerName, setAssignOfficerName] = useState('')
+  const [assignReason, setAssignReason] = useState('')
+  const [assignSubmitting, setAssignSubmitting] = useState(false)
+  const [assignError, setAssignError] = useState('')
+  const [officers, setOfficers] = useState([])
+
+  // Resolve Modal & Proof File Upload
   const [showResolveModal, setShowResolveModal] = useState(false)
   const [resolutionNotes, setResolutionNotes] = useState('')
   const [afterImageUrl, setAfterImageUrl] = useState('')
+  const [afterImageBase64, setAfterImageBase64] = useState('')
   const [resolveSubmitting, setResolveSubmitting] = useState(false)
+  const [resolveError, setResolveError] = useState('')
 
   // Internal Notes
   const [notes, setNotes] = useState([])
@@ -48,21 +61,26 @@ export default function GovReportDetailPage() {
     setLoading(true)
     setError('')
     try {
-      const [repRes, deptRes, notesRes] = await Promise.all([
+      const [repRes, deptRes, notesRes, officersRes] = await Promise.all([
         api.getReportById(id),
         api.getDepartments().catch(() => ({ departments: [] })),
-        api.getInternalNotes(id).catch(() => ({ notes: [] }))
+        api.getInternalNotes(id).catch(() => ({ notes: [] })),
+        api.getOfficers().catch(() => ({ officers: [] }))
       ])
 
       if (repRes && repRes.report) {
         setReport(repRes.report)
         setOverrideDept(repRes.report.department_id || '')
         setOverrideSeverity(repRes.report.severity || 'HIGH')
+        setAssignDept(repRes.report.department_id || '')
+        setAssignOfficerId(repRes.report.assigned_officer_id || '')
+        setAssignOfficerName(repRes.report.assigned_officer_name || '')
       } else {
         setError('Report could not be found.')
       }
       setDepartments(deptRes.departments || [])
       setNotes(notesRes.notes || [])
+      setOfficers(officersRes.officers || [])
     } catch (err) {
       setError(err.message || 'Failed to load report')
     } finally {
@@ -79,12 +97,60 @@ export default function GovReportDetailPage() {
     try {
       await api.assignOfficer(report.id || report._id, {
         officer_id: officerId,
-        officer_name: officerName
+        officer_name: officerName,
+        department_id: report.department_id,
+        department_name: report.department_name,
+        reason: 'Direct assignment by duty officer'
       })
       await loadData()
     } catch (err) {
       alert(err.message || 'Assignment failed')
     }
+  }
+
+  async function handleAssignSubmit(e) {
+    e.preventDefault()
+    if (!assignOfficerId) {
+      setAssignError('Please select a duty officer.')
+      return
+    }
+    const selectedOfficer = officers.find(o => String(o.id) === String(assignOfficerId) || String(o._id) === String(assignOfficerId))
+    const finalOfficerName = selectedOfficer ? selectedOfficer.full_name : assignOfficerName
+    const selectedDept = departments.find(d => d.id === assignDept || d.code === assignDept)
+    const deptName = selectedDept ? selectedDept.name : assignDept
+
+    setAssignSubmitting(true)
+    setAssignError('')
+    try {
+      await api.assignOfficer(report.id || report._id, {
+        officer_id: assignOfficerId,
+        officer_name: finalOfficerName,
+        department_id: assignDept,
+        department_name: deptName,
+        reason: assignReason || 'Officer reassignment'
+      })
+      setShowAssignModal(false)
+      setAssignReason('')
+      await loadData()
+    } catch (err) {
+      setAssignError(err.message || 'Assignment failed')
+    } finally {
+      setAssignSubmitting(false)
+    }
+  }
+
+  function handleAfterImageFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file (PNG, JPG, WEBP).')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      setAfterImageBase64(reader.result)
+    }
+    reader.readAsDataURL(file)
   }
 
   async function handleStatusUpdate(newStatus) {
@@ -149,22 +215,25 @@ export default function GovReportDetailPage() {
   async function handleResolveSubmit(e) {
     e.preventDefault()
     if (!resolutionNotes.trim()) {
-      alert('Please describe the field repairs completed.')
+      setResolveError('Field completion notes are mandatory.')
       return
     }
 
     setResolveSubmitting(true)
+    setResolveError('')
     try {
       await api.resolveReportWithProof(report.id || report._id, {
-        resolution_notes: resolutionNotes,
-        resolution_image_url: afterImageUrl || 'https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=600'
+        resolution_notes: resolutionNotes.trim(),
+        resolution_image_url: afterImageUrl.trim(),
+        resolution_image_base64: afterImageBase64
       })
       setShowResolveModal(false)
       setResolutionNotes('')
       setAfterImageUrl('')
+      setAfterImageBase64('')
       await loadData()
     } catch (err) {
-      alert(err.message || 'Resolution submission failed')
+      setResolveError(err.message || 'Resolution submission failed')
     } finally {
       setResolveSubmitting(false)
     }
@@ -255,11 +324,25 @@ export default function GovReportDetailPage() {
 
           <button
             type="button"
+            onClick={() => {
+              setAssignDept(report.department_id || '')
+              setAssignOfficerId(report.assigned_officer_id || '')
+              setAssignOfficerName(report.assigned_officer_name || '')
+              setShowAssignModal(true)
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 shadow-xs transition-colors flex items-center gap-1.5"
+          >
+            <UserCheck size={14} />
+            <span>{report.assigned_officer_id ? 'Reassign Officer' : 'Assign Officer'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowOverrideModal(true)}
             className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 shadow-xs transition-colors flex items-center gap-1.5"
           >
             <Edit3 size={14} />
-            <span>Override AI Assessment</span>
+            <span>Override AI</span>
           </button>
 
           <button
@@ -461,6 +544,140 @@ export default function GovReportDetailPage() {
           )}
         </div>
       </section>
+
+      {/* Resolution & Verification Proof Card */}
+      {(report.resolution || ['resolved', 'closed', 'disputed'].includes(report.status)) && (
+        <section className={`p-6 rounded-2xl border shadow-xs space-y-4 ${
+          report.status === 'disputed'
+            ? 'bg-rose-50/70 border-rose-200'
+            : report.status === 'closed'
+            ? 'bg-emerald-50/70 border-emerald-200'
+            : 'bg-amber-50/70 border-amber-200'
+        }`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/60 pb-3">
+            <div className="flex items-center gap-2">
+              {report.status === 'disputed' ? (
+                <AlertTriangle size={20} className="text-rose-600 shrink-0" />
+              ) : report.status === 'closed' ? (
+                <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+              ) : (
+                <Clock size={20} className="text-amber-600 shrink-0" />
+              )}
+              <div>
+                <h3 className="font-black text-slate-900 text-base">
+                  {report.status === 'disputed'
+                    ? 'Citizen Disputed Resolution — Action Required'
+                    : report.status === 'closed'
+                    ? 'Resolution Inspected & Verified by Citizen'
+                    : 'Field Work Completed — Awaiting Citizen Verification'}
+                </h3>
+                <p className="text-xs text-slate-600">
+                  {report.status === 'disputed'
+                    ? 'The reporting citizen disputed field completion. Review feedback below and dispatch follow-up crew.'
+                    : report.status === 'closed'
+                    ? 'Citizen verified and accepted field work. Case is successfully concluded.'
+                    : 'Duty Officer logged resolution proof. Citizen notification sent for physical on-site inspection.'}
+                </p>
+              </div>
+            </div>
+
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
+              report.status === 'disputed'
+                ? 'bg-rose-100 text-rose-800 border-rose-300'
+                : report.status === 'closed'
+                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                : 'bg-amber-100 text-amber-800 border-amber-300'
+            }`}>
+              {report.status}
+            </span>
+          </div>
+
+          {/* Before & After Photo Comparison */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Before Photo */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 space-y-2">
+              <span className="font-bold text-[10px] uppercase tracking-wider text-slate-500 block">
+                Original Incident Photo (Before)
+              </span>
+              {report.evidence?.image_base64 || report.evidence?.image_url ? (
+                <img
+                  src={report.evidence.image_base64 || report.evidence.image_url}
+                  alt="Citizen Incident Photo (Before)"
+                  className="w-full h-48 object-cover rounded-lg border border-slate-200"
+                />
+              ) : (
+                <div className="w-full h-48 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs italic">
+                  No initial photo attached
+                </div>
+              )}
+            </div>
+
+            {/* After Photo */}
+            <div className="p-3 bg-white rounded-xl border border-slate-200/80 space-y-2">
+              <span className="font-bold text-[10px] uppercase tracking-wider text-emerald-700 block">
+                Field Completion Proof (After)
+              </span>
+              {report.resolution?.after_image_base64 || report.resolution?.after_image_url ? (
+                <img
+                  src={report.resolution.after_image_base64 || report.resolution.after_image_url}
+                  alt="Resolution Proof (After)"
+                  className="w-full h-48 object-cover rounded-lg border border-emerald-200"
+                />
+              ) : (
+                <div className="w-full h-48 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-xs italic">
+                  No completion photo attached
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Resolution Notes & Metadata */}
+          <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-slate-500">
+              <span>
+                <strong>Resolved By:</strong> {report.resolution?.resolved_by || report.assigned_officer_name || 'Duty Officer'}
+              </span>
+              <span>
+                <strong>Timestamp:</strong> {report.resolution?.resolved_at ? new Date(report.resolution.resolved_at).toLocaleString() : 'Recent'}
+              </span>
+            </div>
+            {report.resolution?.resolution_notes && (
+              <p className="text-slate-800 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed font-medium">
+                "{report.resolution.resolution_notes}"
+              </p>
+            )}
+          </div>
+
+          {/* Citizen Verification Feedback if any */}
+          {report.citizen_verification && (
+            <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-1.5 text-xs">
+              <span className="font-bold uppercase tracking-wider text-slate-500 text-[10px] block">
+                Citizen Inspection Feedback & Rating
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-900">
+                  Status: {report.citizen_verification.status === 'closed' ? 'Verified & Approved' : 'Disputed'}
+                </span>
+                {report.citizen_verification.rating && (
+                  <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 font-bold">
+                    {report.citizen_verification.rating} / 5 Stars
+                  </span>
+                )}
+                {report.citizen_verification.verified_at && (
+                  <span className="text-[11px] text-slate-400">
+                    on {new Date(report.citizen_verification.verified_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              {report.citizen_verification.feedback && (
+                <p className="text-slate-700 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  "{report.citizen_verification.feedback}"
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Two Column Layout: Risk & Map vs Timeline & Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -751,10 +968,116 @@ export default function GovReportDetailPage() {
         </div>
       )}
 
-      {/* Mark Resolved Modal with After-Photo Proof */}
-      {showResolveModal && (
+      {/* Assign / Reassign Officer Modal */}
+      {showAssignModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+                <UserCheck size={18} className="text-indigo-600" />
+                <span>{report.assigned_officer_id ? 'Reassign Duty Officer' : 'Assign Duty Officer'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {assignError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                {assignError}
+              </div>
+            )}
+
+            <form onSubmit={handleAssignSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Department:
+                </label>
+                <select
+                  value={assignDept}
+                  onChange={(e) => {
+                    setAssignDept(e.target.value)
+                    setAssignOfficerId('')
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none font-semibold text-slate-800"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((d) => (
+                    <option key={d.id || d._id || d.code} value={d.id || d.code}>
+                      {d.name} ({d.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Duty Officer <span className="text-rose-600">*</span>:
+                </label>
+                <select
+                  value={assignOfficerId}
+                  onChange={(e) => {
+                    setAssignOfficerId(e.target.value)
+                    const off = officers.find(o => String(o.id) === e.target.value || String(o._id) === e.target.value)
+                    if (off) setAssignOfficerName(off.full_name)
+                  }}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none font-semibold text-slate-800"
+                  required
+                >
+                  <option value="">Select Duty Officer</option>
+                  {officers
+                    .filter((off) => !assignDept || off.department_id === assignDept || off.department_code === assignDept)
+                    .map((off) => (
+                      <option key={off.id || off._id} value={off.id || off._id}>
+                        {off.full_name} ({off.role_title || off.role || 'Officer'}) - {off.email}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Handover Reason / Instructions <span className="text-rose-600">*</span>:
+                </label>
+                <textarea
+                  value={assignReason}
+                  onChange={(e) => setAssignReason(e.target.value)}
+                  placeholder="Explain why this case is assigned or reassigned to this officer..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none"
+                  rows={2}
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={assignSubmitting}
+                  className="flex-1 py-2 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
+                >
+                  {assignSubmitting ? 'Assigning...' : 'Confirm Assignment'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAssignModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Mark Resolved Modal with Real Photo Upload Proof */}
+      {showResolveModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 space-y-4 shadow-xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
                 <CheckCircle2 size={18} className="text-emerald-600" />
@@ -770,8 +1093,14 @@ export default function GovReportDetailPage() {
             </div>
 
             <p className="text-xs text-slate-600">
-              Submitting completion proof will change status to <code>resolved</code> and automatically notify the citizen for final physical inspection and confirmation.
+              Submitting completion proof changes report status to <code>resolved</code> and automatically requests physical on-site inspection from the reporting citizen.
             </p>
+
+            {resolveError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+                {resolveError}
+              </div>
+            )}
 
             <form onSubmit={handleResolveSubmit} className="space-y-3 text-xs">
               <div>
@@ -781,25 +1110,63 @@ export default function GovReportDetailPage() {
                 <textarea
                   value={resolutionNotes}
                   onChange={(e) => setResolutionNotes(e.target.value)}
-                  placeholder="Describe the asphalt patch applied, transformer repaired, or waste cleared..."
+                  placeholder="Describe the physical repairs completed on site (e.g. patched asphalt with 50mm bitumen layer, replaced 25kVA transformer fuse, cleared 3 tons of debris)..."
                   className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-600 outline-none"
                   rows={3}
                   required
                 />
               </div>
 
-              <div>
+              {/* Resolution Image Upload / URL */}
+              <div className="space-y-2">
                 <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1">
                   <Camera size={13} className="text-emerald-600" />
-                  <span>After-Photo Proof URL (Optional):</span>
+                  <span>After-Photo Proof (Field Completion Evidence):</span>
                 </label>
-                <input
-                  type="url"
-                  value={afterImageUrl}
-                  onChange={(e) => setAfterImageUrl(e.target.value)}
-                  placeholder="https://example.com/repaired_road.jpg"
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-600 outline-none"
-                />
+
+                {afterImageBase64 ? (
+                  <div className="relative rounded-xl border border-slate-200 overflow-hidden group">
+                    <img
+                      src={afterImageBase64}
+                      alt="Resolution Proof Preview"
+                      className="w-full h-40 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setAfterImageBase64('')}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-900 text-white text-xs flex items-center gap-1"
+                    >
+                      <X size={14} />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl p-4 text-center transition-colors bg-slate-50">
+                    <input
+                      type="file"
+                      id="after-photo-file"
+                      accept="image/*"
+                      onChange={handleAfterImageFile}
+                      className="hidden"
+                    />
+                    <label htmlFor="after-photo-file" className="cursor-pointer flex flex-col items-center gap-1">
+                      <Camera size={22} className="text-slate-400" />
+                      <span className="font-bold text-slate-700">Upload Field Completion Photo</span>
+                      <span className="text-[10px] text-slate-400">PNG, JPG, WEBP</span>
+                    </label>
+                  </div>
+                )}
+
+                <div className="pt-1">
+                  <span className="text-[10px] text-slate-400 block mb-1">Or enter image URL:</span>
+                  <input
+                    type="url"
+                    value={afterImageUrl}
+                    onChange={(e) => setAfterImageUrl(e.target.value)}
+                    placeholder="https://example.com/repaired_site.jpg"
+                    className="w-full p-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-600 outline-none text-xs"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -808,7 +1175,7 @@ export default function GovReportDetailPage() {
                   disabled={resolveSubmitting}
                   className="flex-1 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
                 >
-                  {resolveSubmitting ? 'Resolving...' : 'Submit Resolution Proof'}
+                  {resolveSubmitting ? 'Submitting Proof...' : 'Submit Resolution Proof'}
                 </button>
                 <button
                   type="button"

@@ -900,6 +900,29 @@ def verify_resolution(report_id):
         }
     )
 
+    # Immutable Audit Log
+    citizen_user = getattr(request, "current_user", None)
+    citizen_id = str(citizen_user.get("id")) if citizen_user else str(report.get("citizen_id") or "CITIZEN")
+    citizen_name = citizen_user.get("full_name") if citizen_user else "Citizen"
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": citizen_id,
+        "actor_role": "CITIZEN",
+        "actor_name": citizen_name,
+        "action": f"RESOLUTION_{new_status.upper()}",
+        "tracking_id": report.get("tracking_id"),
+        "report_id": str(report.get("_id")),
+        "details": {
+            "tracking_id": report.get("tracking_id"),
+            "action": new_status,
+            "feedback": feedback,
+            "rating": rating,
+            "citizen_name": citizen_name
+        },
+        "timestamp": now,
+        "created_at": now
+    })
+
     return jsonify({
         "success": True,
         "message": f"Resolution successfully updated to {new_status}."

@@ -18,8 +18,11 @@ export default function GovQueuePage() {
 
   // Filter states
   const [priorityFilter, setPriorityFilter] = useState(searchParams.get('priority') || 'all')
-  const [deptFilter, setDeptFilter] = useState(searchParams.get('department') || 'all')
+  const [deptFilter, setDeptFilter] = useState(
+    searchParams.get('department') || (currentUser?.role === 'officer' && currentUser?.department_id ? currentUser.department_id : 'all')
+  )
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all')
+  const [assignedFilter, setAssignedFilter] = useState(searchParams.get('assigned') || 'all')
   const [repeatedFilter, setRepeatedFilter] = useState(searchParams.get('repeated') || 'all')
   const [areaFilter, setAreaFilter] = useState(searchParams.get('area') || '')
   const [searchQuery, setSearchQuery] = useState('')
@@ -54,14 +57,27 @@ export default function GovQueuePage() {
     loadData()
   }, [priorityFilter, deptFilter, statusFilter, repeatedFilter, areaFilter])
 
-  // Client-side text search
+  // Client-side text & assignment search
   const filteredReports = reports.filter((r) => {
+    if (assignedFilter === 'me') {
+      const myId = String(currentUser?.id || currentUser?._id || '')
+      const myName = String(currentUser?.full_name || '').toLowerCase()
+      const assignedId = String(r.assigned_to || r.assigned_officer_id || '')
+      const assignedName = String(r.assigned_officer_name || '').toLowerCase()
+      if (assignedId !== myId && (!myName || !assignedName.includes(myName))) {
+        return false
+      }
+    } else if (assignedFilter === 'unassigned') {
+      if (r.assigned_to || r.assigned_officer_name) return false
+    }
+
     const q = searchQuery.toLowerCase().trim()
     if (!q) return true
     return (
       (r.tracking_id || '').toLowerCase().includes(q) ||
       (r.title || '').toLowerCase().includes(q) ||
       (r.description || '').toLowerCase().includes(q) ||
+      (r.assigned_officer_name || '').toLowerCase().includes(q) ||
       (r.location?.address || r.location?.area || r.location?.city || '').toLowerCase().includes(q)
     )
   })
@@ -155,6 +171,17 @@ export default function GovQueuePage() {
             <option value="closed">Closed / Verified</option>
           </select>
 
+          {/* Assignment Filter */}
+          <select
+            value={assignedFilter}
+            onChange={(e) => setAssignedFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+          >
+            <option value="all">All Assignments</option>
+            <option value="me">Assigned to Me</option>
+            <option value="unassigned">Unassigned / Needs Officer</option>
+          </select>
+
           {/* Repeated Filter */}
           <select
             value={repeatedFilter}
@@ -167,13 +194,14 @@ export default function GovQueuePage() {
           </select>
 
           {/* Clear Filter button if filters active */}
-          {(priorityFilter !== 'all' || deptFilter !== 'all' || statusFilter !== 'all' || repeatedFilter !== 'all' || searchQuery) && (
+          {(priorityFilter !== 'all' || deptFilter !== 'all' || statusFilter !== 'all' || assignedFilter !== 'all' || repeatedFilter !== 'all' || searchQuery) && (
             <button
               type="button"
               onClick={() => {
                 setPriorityFilter('all')
                 setDeptFilter('all')
                 setStatusFilter('all')
+                setAssignedFilter('all')
                 setRepeatedFilter('all')
                 setSearchQuery('')
               }}
@@ -201,6 +229,7 @@ export default function GovQueuePage() {
                   <th className="py-3 px-4">Tracking & Problem</th>
                   <th className="py-3 px-4">Area / Sector</th>
                   <th className="py-3 px-4">Department</th>
+                  <th className="py-3 px-4">Assigned Officer</th>
                   <th className="py-3 px-4">Photo Quality</th>
                   <th className="py-3 px-4">Repeated</th>
                   <th className="py-3 px-4">Status</th>
@@ -266,6 +295,20 @@ export default function GovQueuePage() {
                           <Building size={12} className="text-emerald-600 shrink-0" />
                           <span className="truncate">{report.department_name || report.department_id || 'CDA Municipal'}</span>
                         </div>
+                      </td>
+
+                      {/* Assigned Officer */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {report.assigned_officer_name ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs bg-slate-100 text-slate-800 border border-slate-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span className="truncate max-w-[120px]">{report.assigned_officer_name}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-semibold italic">
+                            Unassigned
+                          </span>
+                        )}
                       </td>
 
                       {/* Information Quality */}
