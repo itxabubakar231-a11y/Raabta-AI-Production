@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
 import LandingPage from './pages/LandingPage'
 import HomePage from './pages/HomePage'
 import SubmitComplaintPage from './pages/SubmitComplaintPage'
@@ -14,12 +15,12 @@ import SignupPage from './pages/SignupPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 
 const router = createBrowserRouter([
-  // Public Landing Page as root default
+  // 1. Public Landing Page (Zero portal access without auth)
   {
     path: '/',
     element: <LandingPage />,
   },
-  // Public Authentication
+  // 2. Public Authentication Routes
   {
     path: '/login',
     element: <LoginPage />,
@@ -28,10 +29,14 @@ const router = createBrowserRouter([
     path: '/signup',
     element: <SignupPage />,
   },
-  // Application Portal (under Layout shell)
+  // 3. Application Portal Dashboard (Protected)
   {
     path: '/app',
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,
@@ -50,27 +55,39 @@ const router = createBrowserRouter([
         element: <ReportDetailPage />,
       },
       {
-        path: 'department',
-        element: <DepartmentPage />,
-      },
-      {
         path: 'insights',
         element: <InsightsPage />,
-      },
-      {
-        path: 'admin',
-        element: <AdminPage />,
       },
       {
         path: 'how-it-works',
         element: <HowItWorksPage />,
       },
+      {
+        path: 'department',
+        element: (
+          <ProtectedRoute allowedRoles={['officer', 'admin']}>
+            <DepartmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminPage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
-  // Direct portal routes for seamless deep-linking
+  // 4. Direct Portal Routes for Seamless Deep-linking (Protected & Role-Guarded)
   {
     path: '/',
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: 'submit',
@@ -85,24 +102,32 @@ const router = createBrowserRouter([
         element: <ReportDetailPage />,
       },
       {
-        path: 'department',
-        element: <DepartmentPage />,
-      },
-      {
         path: 'insights',
         element: <InsightsPage />,
-      },
-      {
-        path: 'admin',
-        element: <AdminPage />,
       },
       {
         path: 'how-it-works',
         element: <HowItWorksPage />,
       },
+      {
+        path: 'department',
+        element: (
+          <ProtectedRoute allowedRoles={['officer', 'admin']}>
+            <DepartmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin',
+        element: (
+          <ProtectedRoute allowedRoles={['admin']}>
+            <AdminPage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
-  // Wildcard fallback
+  // 5. Wildcard Fallback
   {
     path: '*',
     element: <Navigate to="/" replace />,

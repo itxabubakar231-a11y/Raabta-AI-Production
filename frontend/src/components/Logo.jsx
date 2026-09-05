@@ -6,7 +6,8 @@ export default function Logo({
   showText = true,
   to = '/',
   className = '',
-  animated = true
+  animated = true,
+  theme = 'light'
 }) {
   const sizeMap = {
     xs: { img: 'w-6 h-6', text: 'text-sm', badge: 'text-[9px] px-1 py-0.5' },
@@ -20,7 +21,7 @@ export default function Logo({
 
   const content = (
     <div className={`inline-flex items-center gap-2.5 select-none ${className}`}>
-      <div className={`relative shrink-0 ${currentSize.img} rounded-xl overflow-hidden p-0.5 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent border border-white/10 flex items-center justify-center shadow-sm`}>
+      <div className={`relative shrink-0 ${currentSize.img} rounded-xl overflow-hidden p-0.5 bg-gradient-to-br from-indigo-500/20 via-emerald-500/10 to-transparent border ${theme === 'dark' ? 'border-white/10' : 'border-slate-200'} flex items-center justify-center shadow-sm`}>
         <img
           src="/favicon.svg"
           alt="Raabta AI Logo"
@@ -31,10 +32,10 @@ export default function Logo({
 
       {showText && (
         <div className="flex items-center gap-1.5 leading-none">
-          <span className={`font-black tracking-tight text-white ${currentSize.text}`}>
+          <span className={`font-black tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'} ${currentSize.text}`}>
             Raabta
           </span>
-          <span className={`font-extrabold uppercase rounded-md bg-gradient-to-r from-indigo-500 to-cyan-400 text-white shadow-sm shadow-indigo-500/25 ${currentSize.badge}`}>
+          <span className={`font-extrabold uppercase rounded-md bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-500/25 ${currentSize.badge}`}>
             AI
           </span>
         </div>

@@ -16,7 +16,7 @@ export default function Layout() {
     { label: 'Overview', path: '/app', icon: Home },
     { label: 'File Incident', path: '/submit', icon: FileText },
     { label: 'Case Dossiers', path: '/track', icon: Activity },
-    { label: 'Command Center', path: '/department', icon: Landmark },
+    ...((role === 'officer' || role === 'admin') ? [{ label: 'Command Center', path: '/department', icon: Landmark }] : []),
     { label: 'Civic Hotspots', path: '/insights', icon: TrendingUp },
     ...(role === 'admin' ? [{ label: 'Administration', path: '/admin', icon: Shield }] : []),
     { label: 'How It Works', path: '/how-it-works', icon: HelpCircle },

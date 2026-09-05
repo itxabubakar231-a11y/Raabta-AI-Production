@@ -95,7 +95,8 @@ export function AuthProvider({ children }) {
       value={{
         currentUser,
         token,
-        role: currentUser?.role || 'citizen',
+        role: currentUser?.role || null,
+        isAuthenticated: Boolean(currentUser && token),
         loading,
         login,
         signup,
