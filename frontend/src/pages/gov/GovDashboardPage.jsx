@@ -51,29 +51,12 @@ export default function GovDashboardPage() {
   const metrics = trends?.metrics || {}
   
   // Real database metrics with queue synchronization to guarantee zero 0-count discrepancies
-  const totalReports = queueStats.total !== undefined
-    ? queueStats.total
-    : (metrics.total_reports !== undefined ? metrics.total_reports : recentReports.length)
-
-  const criticalCount = queueStats.critical !== undefined
-    ? queueStats.critical
-    : (metrics.critical_count || 0)
-
-  const waitingActionCount = queueStats.waiting_action !== undefined
-    ? queueStats.waiting_action
-    : (queueStats.pending !== undefined ? queueStats.pending : (metrics.waiting_action_count || metrics.active_open || 0))
-
-  const inProgressCount = queueStats.in_progress !== undefined
-    ? queueStats.in_progress
-    : (metrics.in_progress_count || 0)
-
-  const resolvedCount = queueStats.resolved !== undefined
-    ? queueStats.resolved
-    : (metrics.resolved_count || 0)
-
-  const disputedCount = queueStats.disputed !== undefined
-    ? queueStats.disputed
-    : (metrics.disputed_count || 0)
+  const totalReports = Math.max(queueStats.total || 0, metrics.total_reports || 0, recentReports.length)
+  const criticalCount = Math.max(queueStats.critical || 0, metrics.critical_count || 0)
+  const waitingActionCount = Math.max(queueStats.waiting_action || 0, queueStats.pending || 0, metrics.waiting_action_count || 0, metrics.active_open || 0)
+  const inProgressCount = Math.max(queueStats.in_progress || 0, metrics.in_progress_count || 0)
+  const resolvedCount = Math.max(queueStats.resolved || 0, metrics.resolved_count || 0)
+  const disputedCount = Math.max(queueStats.disputed || 0, metrics.disputed_count || 0)
 
   const isOfficer = role === 'officer'
   const deptName = currentUser?.department_name || currentUser?.department_id || 'Assigned Department'

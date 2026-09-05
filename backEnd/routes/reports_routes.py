@@ -349,7 +349,8 @@ def create_report():
     db = get_db()
     current_user = getattr(request, "current_user", None)
     citizen_id = str(current_user.get("id") or current_user.get("_id")) if current_user else None
-    citizen_name = current_user.get("full_name") if current_user else (data.get("citizen_name") if 'data' in locals() and isinstance(data, dict) else "Citizen")
+    citizen_email = (current_user.get("email") or "").strip().lower() if current_user else None
+    citizen_name = current_user.get("full_name") if current_user else "Citizen"
 
     # Support JSON or multipart/form-data
     audio_base64 = None
@@ -484,6 +485,7 @@ def create_report():
         "id": report_id,
         "tracking_id": tracking_id,
         "citizen_id": citizen_id,
+        "citizen_email": citizen_email,
         "citizen_name": citizen_name,
         "citizen_phone": data.get("citizen_phone", ""),
         "title": title,
@@ -704,8 +706,15 @@ def list_reports():
 @token_required
 def get_my_reports():
     db = get_db()
-    user_id = request.current_user.get("id", request.current_user.get("_id"))
-    reports = list(db.civic_reports.find({"citizen_id": user_id}).sort("created_at", -1))
+    user_id = str(request.current_user.get("id") or request.current_user.get("_id") or "")
+    user_email = (request.current_user.get("email") or "").strip().lower()
+
+    query_conditions = [{"citizen_id": user_id}]
+    if user_email:
+        query_conditions.append({"citizen_email": user_email})
+
+    query = {"$or": query_conditions} if len(query_conditions) > 1 else query_conditions[0]
+    reports = list(db.civic_reports.find(query).sort("created_at", -1))
     return jsonify({
         "success": True,
         "reports": serialize_doc(reports)

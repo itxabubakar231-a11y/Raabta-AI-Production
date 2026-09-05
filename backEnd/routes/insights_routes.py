@@ -3,6 +3,7 @@ Raabta AI - Civic Hotspots & Insights Routes
 Provides analytics, geospatial pins for Leaflet hotspot maps, and departmental performance trends.
 """
 
+import re
 from flask import Blueprint, request, jsonify
 from database import get_db, serialize_doc
 

@@ -23,8 +23,29 @@ export default function TrackComplaintPage() {
   async function loadReports() {
     setLoading(true)
     try {
-      const res = await api.getReports({ limit: 100 })
-      setReports(res.reports || [])
+      let myData = []
+      if (token) {
+        // Authenticated citizen: load personal persistent reports from database
+        const res = await api.getMyReports()
+        myData = res?.reports || []
+      } else {
+        const res = await api.getReports({ limit: 100 })
+        myData = res?.reports || []
+      }
+
+      // If an initial tracking_id was specified in the URL and isn't already present, fetch it directly
+      if (initialQuery && !myData.some(r => (r.tracking_id || '').toLowerCase() === initialQuery.toLowerCase() || r.id === initialQuery || r._id === initialQuery)) {
+        try {
+          const directRes = await api.getReportById(initialQuery)
+          if (directRes?.report) {
+            myData = [directRes.report, ...myData]
+          }
+        } catch {
+          // Ignore if tracking ID not found
+        }
+      }
+
+      setReports(myData)
     } catch (err) {
       console.error('Failed to load reports:', err)
     } finally {
