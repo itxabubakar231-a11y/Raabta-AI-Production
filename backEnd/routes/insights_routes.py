@@ -78,6 +78,7 @@ def get_civic_hotspots():
 
 
 @insights_bp.route("/trends", methods=["GET"], strict_slashes=False)
+@insights_bp.route("/summary", methods=["GET"], strict_slashes=False)
 def get_civic_trends():
     """Returns aggregated platform metrics, category distributions, and SLA metrics."""
     db = get_db()

@@ -181,6 +181,13 @@ def vercel_entrypoint():
 
 @app.errorhandler(Exception)
 def handle_exception(e):
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return jsonify({
+            "status": "error",
+            "error": e.description,
+            "code": e.code
+        }), e.code
     import traceback
     traceback.print_exc()
     return jsonify({
