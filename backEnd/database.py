@@ -504,6 +504,7 @@ class ResilientDatabase:
 # Global database instance holder
 _db_instance = None
 _db_type = "uninitialized"
+_last_mongo_error = None
 
 
 def get_db():
@@ -511,7 +512,7 @@ def get_db():
     Returns the active database instance.
     Attempts MongoDB connection first, falling back gracefully to ResilientDatabase.
     """
-    global _db_instance, _db_type
+    global _db_instance, _db_type, _last_mongo_error
 
     if _db_instance is not None:
         return _db_instance
@@ -526,11 +527,19 @@ def get_db():
             client.admin.command('ping')
             _db_instance = client[db_name]
             _db_type = "mongodb"
+            _last_mongo_error = None
             print(f"[Database] Connected successfully to MongoDB: {db_name}")
             _setup_indexes(_db_instance)
             return _db_instance
         except Exception as e:
-            print(f"[Database] MongoDB connection failed ({e}). Initializing resilient document store...")
+            err_msg = str(e)
+            if "@" in err_msg:
+                import re
+                err_msg = re.sub(r"://[^@]+@", "://***:***@", err_msg)
+            _last_mongo_error = f"{type(e).__name__}: {err_msg}"
+            print(f"[Database] MongoDB connection failed ({_last_mongo_error}). Initializing resilient document store...")
+    elif not mongodb_uri:
+        _last_mongo_error = "MONGODB_URI environment variable is not configured in environment."
 
     # Fallback to persistent local document storage (uses /tmp on Vercel/serverless)
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
@@ -566,12 +575,17 @@ def get_db_status() -> Dict[str, Any]:
         except Exception:
             counts[col] = 0
 
-    return {
+    mongodb_uri = os.environ.get("MONGODB_URI") or os.getenv("MONGODB_URI") or os.environ.get("MONGO_URI") or os.getenv("MONGO_URI", "")
+    status_info = {
         "connected": True,
         "database_type": _db_type,
         "database_name": "raabta_ai",
+        "mongodb_uri_detected": bool(mongodb_uri),
         "collections": counts
     }
+    if _db_type != "mongodb":
+        status_info["fallback_reason"] = _last_mongo_error or "MONGODB_URI not configured or unreachable"
+    return status_info
 
 
 def _setup_indexes(db):
