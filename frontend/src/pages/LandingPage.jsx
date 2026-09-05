@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowRight, CheckCircle2, Shield, AlertTriangle,
+  ArrowRight, CheckCircle2, Shield, ShieldCheck, AlertTriangle,
   MapPin, Mic, FileText, Download, Building,
   Landmark, Activity, Zap, Layers, Menu, X,
   Sliders, Eye, Clock, LogIn, UserPlus, LogOut,
