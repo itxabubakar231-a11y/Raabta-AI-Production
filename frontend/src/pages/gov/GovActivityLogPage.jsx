@@ -27,6 +27,31 @@ export default function GovActivityLogPage() {
     loadData()
   }, [])
 
+  const formatUser = (log) => {
+    if (log.user_email) return log.user_email
+    if (typeof log.user === 'object' && log.user !== null) {
+      return log.user.email || log.user.full_name || log.user.name || log.user.id || 'User'
+    }
+    if (typeof log.user === 'string' && log.user) return log.user
+    if (log.author) return typeof log.author === 'object' ? (log.author.name || log.author.email || 'Author') : log.author
+    return 'System Agent'
+  }
+
+  const formatDetails = (log) => {
+    if (typeof log.details === 'object' && log.details !== null) {
+      if (log.details.email) return `Email: ${log.details.email}`
+      if (log.details.reason) return `Reason: ${log.details.reason}`
+      if (log.details.tracking_id) return `Tracking ID: ${log.details.tracking_id}`
+      if (log.details.note) return log.details.note
+      return JSON.stringify(log.details)
+    }
+    if (log.details) return String(log.details)
+    if (log.notes) return typeof log.notes === 'object' ? JSON.stringify(log.notes) : String(log.notes)
+    if (log.reason) return typeof log.reason === 'object' ? JSON.stringify(log.reason) : String(log.reason)
+    if (log.payload) return JSON.stringify(log.payload)
+    return '-'
+  }
+
   const filteredLogs = logs.filter(log => {
     if (actionFilter !== 'all') {
       const act = (log.action || log.event || '').toLowerCase()
@@ -35,11 +60,17 @@ export default function GovActivityLogPage() {
 
     const q = searchQuery.toLowerCase().trim()
     if (!q) return true
+
+    const userStr = formatUser(log).toLowerCase()
+    const detailStr = formatDetails(log).toLowerCase()
+    const trackingStr = (log.tracking_id || log.report_id || '').toLowerCase()
+    const actStr = (log.action || log.event || '').toLowerCase()
+
     return (
-      (log.action || log.event || '').toLowerCase().includes(q) ||
-      (log.user_email || log.user || log.author || '').toLowerCase().includes(q) ||
-      (log.tracking_id || log.report_id || '').toLowerCase().includes(q) ||
-      (log.details || log.notes || log.reason || '').toLowerCase().includes(q)
+      actStr.includes(q) ||
+      userStr.includes(q) ||
+      trackingStr.includes(q) ||
+      detailStr.includes(q)
     )
   })
 
@@ -151,15 +182,15 @@ export default function GovActivityLogPage() {
                       </td>
 
                       <td className="py-3.5 px-4 font-semibold text-slate-800">
-                        {log.user_email || log.user || log.author || 'System Agent'}
+                        {formatUser(log)}
                       </td>
 
                       <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
                         {log.tracking_id || log.report_id || '-'}
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-600 max-w-md">
-                        {log.details || log.notes || log.reason || JSON.stringify(log.payload || {})}
+                      <td className="py-3.5 px-4 text-slate-600 max-w-md break-words">
+                        {formatDetails(log)}
                       </td>
                     </tr>
                   )

@@ -73,9 +73,19 @@ export default function CitizenReportWizard() {
   const [latitude, setLatitude] = useState(33.712)
   const [longitude, setLongitude] = useState(73.045)
   const [addressText, setAddressText] = useState('F-8 Markaz, Islamabad')
+  const [locationSource, setLocationSource] = useState('preset') // 'gps' | 'map' | 'preset' | 'manual'
   const [gpsLoading, setGpsLoading] = useState(false)
-  const [locationSource, setLocationSource] = useState('default') // 'gps' or 'manual' or 'default'
+  const [gpsAccuracy, setGpsAccuracy] = useState(null)
   const [locationNotice, setLocationNotice] = useState('')
+
+  const blobToBase64 = (blob) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
 
   // AI Review states
   const [analyzing, setAnalyzing] = useState(false)
@@ -198,19 +208,44 @@ export default function CitizenReportWizard() {
     setGpsLoading(true)
     setLocationNotice('')
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLatitude(pos.coords.latitude)
-        setLongitude(pos.coords.longitude)
+      async (pos) => {
+        const lat = pos.coords.latitude
+        const lon = pos.coords.longitude
+        const acc = pos.coords.accuracy
+        setLatitude(lat)
+        setLongitude(lon)
+        setGpsAccuracy(acc)
         setLocationSource('gps')
-        setGpsLoading(false)
-        setAddressText(`Sector F-8, Islamabad (GPS: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`)
+
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 3500)
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+            headers: { 'Accept-Language': 'en' },
+            signal: controller.signal
+          })
+          clearTimeout(timeoutId)
+          if (res.ok) {
+            const data = await res.json()
+            const suburb = data.address?.suburb || data.address?.neighbourhood || data.address?.residential || data.address?.road || ''
+            const city = data.address?.city || data.address?.town || data.address?.state_district || 'Islamabad'
+            const formatted = suburb ? `${suburb}, ${city}` : (data.display_name ? data.display_name.split(',').slice(0, 3).join(',') : `GPS: (${lat.toFixed(4)}, ${lon.toFixed(4)})`)
+            setAddressText(formatted)
+          } else {
+            setAddressText(`GPS Coordinates: (${lat.toFixed(4)}, ${lon.toFixed(4)})`)
+          }
+        } catch {
+          setAddressText(`GPS Coordinates: (${lat.toFixed(4)}, ${lon.toFixed(4)})`)
+        } finally {
+          setGpsLoading(false)
+        }
       },
       (err) => {
         setGpsLoading(false)
         setLocationSource('manual')
-        setLocationNotice('Location permission was denied. Please adjust the pin on the map or enter your sector manually.')
+        setLocationNotice('Location permission was denied or timed out. Please enter your address or sector manually.')
       },
-      { timeout: 8000 }
+      { timeout: 8000, enableHighAccuracy: true }
     )
   }
 
@@ -325,8 +360,22 @@ export default function CitizenReportWizard() {
         citizen_phone: currentUser?.phone || '',
       }
 
-      if (photoPreview && photoPreview.startsWith('data:')) {
+      if (photoFile) {
+        try {
+          payload.image_base64 = await blobToBase64(photoFile)
+        } catch (e) {
+          console.warn('Could not encode photo:', e)
+        }
+      } else if (photoPreview && photoPreview.startsWith('data:')) {
         payload.image_base64 = photoPreview
+      }
+
+      if (audioBlob) {
+        try {
+          payload.audio_base64 = await blobToBase64(audioBlob)
+        } catch (e) {
+          console.warn('Could not encode audio:', e)
+        }
       }
 
       const res = await api.createCivicReport(payload)
@@ -619,15 +668,22 @@ export default function CitizenReportWizard() {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={requestCurrentLocation}
-                disabled={gpsLoading}
-                className="py-2 px-4 rounded-xl bg-white hover:bg-slate-100 text-emerald-800 font-bold text-xs border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-colors"
-              >
-                <RefreshCw size={13} className={gpsLoading ? 'animate-spin' : ''} />
-                <span>{gpsLoading ? 'Detecting GPS...' : 'Use My GPS Location'}</span>
-              </button>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                {gpsAccuracy && (
+                  <span className="text-[11px] font-mono text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-full border border-emerald-300">
+                    GPS &plusmn;{Math.round(gpsAccuracy)}m ({gpsAccuracy < 30 ? 'High' : gpsAccuracy < 100 ? 'Medium' : 'Standard'})
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={requestCurrentLocation}
+                  disabled={gpsLoading}
+                  className="py-2 px-4 rounded-xl bg-white hover:bg-slate-100 text-emerald-800 font-bold text-xs border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw size={13} className={gpsLoading ? 'animate-spin' : ''} />
+                  <span>{gpsLoading ? 'Detecting GPS...' : 'Use My GPS Location'}</span>
+                </button>
+              </div>
             </div>
 
             <input

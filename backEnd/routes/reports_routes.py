@@ -291,6 +291,7 @@ def create_report():
     citizen_name = current_user.get("full_name") if current_user else "Citizen"
 
     # Support JSON or multipart/form-data
+    audio_base64 = None
     if request.is_json:
         data = request.get_json() or {}
         image_bytes = None
@@ -302,10 +303,16 @@ def create_report():
                 image_bytes = base64.b64decode(b64_str)
             except Exception:
                 image_bytes = None
+        audio_base64 = data.get("audio_base64")
     else:
         data = request.form.to_dict()
         image_file = request.files.get("image")
         image_bytes = image_file.read() if image_file else None
+        audio_file = request.files.get("audio")
+        if audio_file:
+            audio_bytes = audio_file.read()
+            if audio_bytes:
+                audio_base64 = "data:audio/webm;base64," + base64.b64encode(audio_bytes).decode("utf-8")
 
     title = (data.get("title") or "").strip()
     description = (data.get("description") or data.get("complaint_body") or "").strip()
@@ -359,7 +366,7 @@ def create_report():
         description = f"Reported {category} incident requiring municipal inspection."
 
     # Step 2: Evidence Quality Assessment
-    has_audio = bool(data.get("audio_url") or "audio" in request.files)
+    has_audio = bool(audio_base64 or data.get("audio_url") or "audio" in request.files)
     evidence_quality = assess_evidence_quality(
         image_bytes=image_bytes,
         text_length=len(description),
@@ -412,10 +419,12 @@ def create_report():
             "city": city
         },
         "evidence": {
-            "has_image": bool(image_bytes),
-            "image_url": data.get("image_url", "/sample_evidence.jpg" if image_bytes else None),
-            "image_base64": ("data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")) if image_bytes and len(image_bytes) < 300000 else None,
+            "has_image": bool(image_bytes or data.get("image_base64")),
+            "image_url": data.get("image_url") or ("/sample_evidence.jpg" if image_bytes else None),
+            "image_base64": data.get("image_base64") or (("data:image/jpeg;base64," + base64.b64encode(image_bytes).decode("utf-8")) if image_bytes and len(image_bytes) < 500000 else None),
+            "has_audio": bool(audio_base64 or data.get("audio_url")),
             "audio_url": data.get("audio_url"),
+            "audio_base64": audio_base64,
             "transcript": data.get("transcript"),
             "quality_label": evidence_quality["quality_label"],
             "quality_score": evidence_quality["quality_score"],
@@ -424,7 +433,7 @@ def create_report():
         "civic_risk_score": risk_data,
         "sla_hours": risk_data.get("recommended_sla_hours", 48),
         "missing_information_questions": missing_questions,
-        "missing_information_answers": [],
+        "missing_information_answers": data.get("missing_information_answers") or [],
         "cluster_id": None,
         "is_duplicate": False,
         "timeline": [
@@ -501,6 +510,8 @@ def list_reports():
     db = get_db()
     query = {}
 
+    and_conditions = []
+
     status = request.args.get("status")
     if status and status != "all":
         query["status"] = status
@@ -511,7 +522,13 @@ def list_reports():
 
     department_id = request.args.get("department_id") or request.args.get("department")
     if department_id and department_id != "all":
-        query["$or"] = [{"department_id": department_id}, {"department_name": department_id}]
+        and_conditions.append({
+            "$or": [
+                {"department_id": {"$regex": f"^{department_id}$", "$options": "i"}},
+                {"department_id": department_id},
+                {"department_name": {"$regex": department_id, "$options": "i"}}
+            ]
+        })
 
     min_risk = request.args.get("min_risk")
     if min_risk:
@@ -536,13 +553,21 @@ def list_reports():
 
     search = request.args.get("search")
     if search:
-        query["$or"] = [
-            {"title": {"$regex": search, "$options": "i"}},
-            {"tracking_id": {"$regex": search, "$options": "i"}},
-            {"location.address": {"$regex": search, "$options": "i"}},
-            {"location.city": {"$regex": search, "$options": "i"}},
-            {"category": {"$regex": search, "$options": "i"}}
-        ]
+        and_conditions.append({
+            "$or": [
+                {"title": {"$regex": search, "$options": "i"}},
+                {"tracking_id": {"$regex": search, "$options": "i"}},
+                {"location.address": {"$regex": search, "$options": "i"}},
+                {"location.city": {"$regex": search, "$options": "i"}},
+                {"category": {"$regex": search, "$options": "i"}}
+            ]
+        })
+
+    if and_conditions:
+        if len(and_conditions) == 1:
+            query.update(and_conditions[0])
+        else:
+            query["$and"] = and_conditions
 
     cluster_id = request.args.get("cluster_id")
     if cluster_id:

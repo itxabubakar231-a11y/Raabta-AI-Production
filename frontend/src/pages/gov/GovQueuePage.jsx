@@ -32,6 +32,7 @@ export default function GovQueuePage() {
         api.getReports({
           limit: 150,
           sort_by: 'priority_desc',
+          department_id: deptFilter === 'all' ? '' : deptFilter,
           department: deptFilter === 'all' ? '' : deptFilter,
           status: statusFilter === 'all' ? '' : statusFilter,
           priority: priorityFilter === 'all' ? '' : priorityFilter,
@@ -132,7 +133,7 @@ export default function GovQueuePage() {
           >
             <option value="all">All Departments</option>
             {departments.map((d) => (
-              <option key={d.id || d._id || d.name} value={d.id || d._id || d.name}>
+              <option key={d.id || d._id || d.code || d.name} value={d.code || d.name || d.id}>
                 {d.name}
               </option>
             ))}

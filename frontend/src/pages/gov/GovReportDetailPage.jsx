@@ -378,15 +378,24 @@ export default function GovReportDetailPage() {
         </div>
 
         {/* Voice Note Audio & Transcript if present */}
-        {report.evidence?.transcript && (
+        {(report.evidence?.transcript || report.evidence?.audio_base64 || report.evidence?.audio_url) && (
           <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs space-y-2">
             <div className="flex items-center gap-2 text-emerald-800 font-bold">
               <Volume2 size={16} className="text-emerald-600" />
-              <span>Voice Note Audio Transcript</span>
+              <span>Voice Note Audio Recording</span>
             </div>
-            <p className="text-slate-700 italic bg-white p-3 rounded-xl border border-emerald-100">
-              "{report.evidence.transcript}"
-            </p>
+            {report.evidence?.transcript && (
+              <p className="text-slate-700 italic bg-white p-3 rounded-xl border border-emerald-100">
+                "{report.evidence.transcript}"
+              </p>
+            )}
+            {(report.evidence?.audio_base64 || report.evidence?.audio_url) && (
+              <audio
+                controls
+                src={report.evidence.audio_base64 || report.evidence.audio_url}
+                className="w-full mt-2"
+              />
+            )}
           </div>
         )}
       </section>
@@ -398,13 +407,13 @@ export default function GovReportDetailPage() {
           <RiskScoreGauge riskData={report.civic_risk_score} />
 
           {/* Photo Evidence */}
-          {report.evidence?.image_url && (
+          {(report.evidence?.image_url || report.evidence?.image_base64) && (
             <div className="p-4 rounded-2xl bg-white border border-slate-200/90 space-y-2 shadow-xs">
               <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Field Photo Evidence
               </h4>
               <img
-                src={report.evidence.image_url}
+                src={report.evidence.image_base64 || report.evidence.image_url}
                 alt="Problem Evidence"
                 className="w-full h-48 object-cover rounded-xl border border-slate-200 shadow-xs"
               />

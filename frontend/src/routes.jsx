@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import CitizenLayout from './components/CitizenLayout'
 import GovernmentLayout from './components/GovernmentLayout'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Public Pages
 import LandingPage from './pages/LandingPage'
@@ -36,23 +37,28 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+    errorElement: <ErrorBoundary />,
   },
   // 2. Public Authentication Routes
   {
     path: '/login',
     element: <LoginPage />,
+    errorElement: <ErrorBoundary />,
   },
   {
     path: '/signup',
     element: <SignupPage />,
+    errorElement: <ErrorBoundary />,
   },
   {
     path: '/forgot-password',
     element: <ForgotPasswordPage />,
+    errorElement: <ErrorBoundary />,
   },
   {
     path: '/reset-password',
     element: <ResetPasswordPage />,
+    errorElement: <ErrorBoundary />,
   },
 
   // 3. Citizen Portal (/app/*) — Protected
@@ -63,6 +69,7 @@ const router = createBrowserRouter([
         <CitizenLayout />
       </ProtectedRoute>
     ),
+    errorElement: <ErrorBoundary />,
     children: [
       {
         index: true,
@@ -115,6 +122,7 @@ const router = createBrowserRouter([
         <GovernmentLayout />
       </ProtectedRoute>
     ),
+    errorElement: <ErrorBoundary />,
     children: [
       {
         index: true,

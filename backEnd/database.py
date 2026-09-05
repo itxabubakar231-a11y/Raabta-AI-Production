@@ -352,12 +352,12 @@ def get_db():
     if _db_instance is not None:
         return _db_instance
 
-    mongodb_uri = os.environ.get("MONGODB_URI") or os.getenv("MONGODB_URI", "")
-    db_name = os.environ.get("MONGODB_DB_NAME", "raabta_ai")
+    mongodb_uri = os.environ.get("MONGODB_URI") or os.getenv("MONGODB_URI") or os.environ.get("MONGO_URI") or os.getenv("MONGO_URI", "")
+    db_name = os.environ.get("MONGODB_DB_NAME") or os.getenv("MONGODB_DB_NAME") or os.environ.get("MONGO_DB_NAME") or os.getenv("MONGO_DB_NAME", "raabta_ai")
 
     if PYMONGO_AVAILABLE and mongodb_uri:
         try:
-            client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=2000)
+            client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
             # Verify connectivity
             client.admin.command('ping')
             _db_instance = client[db_name]

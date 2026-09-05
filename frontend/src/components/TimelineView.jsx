@@ -67,7 +67,9 @@ export default function TimelineView({ timeline = [], currentStatus = 'submitted
 
               {event.details && (
                 <p className="text-xs text-slate-600 mt-1.5 leading-relaxed font-normal">
-                  {event.details}
+                  {typeof event.details === 'object'
+                    ? (event.details.reason || event.details.email || event.details.notes || JSON.stringify(event.details))
+                    : String(event.details)}
                 </p>
               )}
             </div>

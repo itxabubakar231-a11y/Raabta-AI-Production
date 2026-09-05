@@ -115,11 +115,18 @@ def get_operations_queue():
     }
 
     # Department filter
-    dept_filter = request.args.get("department_id") or user_dept
-    if dept_filter and current_user.get("role") != "admin":
+    dept_param = request.args.get("department_id") or request.args.get("department")
+    if dept_param and dept_param != "all":
         query["$or"] = [
-            {"department_id": dept_filter},
-            {"department_name": dept_filter}
+            {"department_id": {"$regex": f"^{dept_param}$", "$options": "i"}},
+            {"department_id": dept_param},
+            {"department_name": {"$regex": dept_param, "$options": "i"}}
+        ]
+    elif not dept_param and user_dept and current_user.get("role") != "admin":
+        query["$or"] = [
+            {"department_id": {"$regex": f"^{user_dept}$", "$options": "i"}},
+            {"department_id": user_dept},
+            {"department_name": {"$regex": user_dept, "$options": "i"}}
         ]
 
     # Additional filters
