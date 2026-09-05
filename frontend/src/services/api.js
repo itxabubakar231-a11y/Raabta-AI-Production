@@ -87,6 +87,44 @@ export async function logout() {
   })
 }
 
+export async function forgotPassword(email) {
+  return requestJson("/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email })
+  })
+}
+
+export async function verifyResetToken(token) {
+  return requestJson(`/auth/verify-reset-token?token=${encodeURIComponent(token)}`, {
+    method: "GET"
+  })
+}
+
+export async function resetPassword({ token, password, confirm_password }) {
+  return requestJson("/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, password, confirm_password })
+  })
+}
+
+export async function changePassword({ current_password, new_password, confirm_password }) {
+  return requestJson("/auth/change-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ current_password, new_password, confirm_password })
+  })
+}
+
+export async function updateProfile(profileData) {
+  return requestJson("/auth/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profileData)
+  })
+}
+
 // =================================
 // CIVIC REPORTS APIs
 // =================================

@@ -42,7 +42,7 @@ from flask_cors import CORS
 import re
 
 # Database initialization
-from database import get_db, get_db_status
+from database import get_db, get_db_status, ensure_baseline_system
 from seed_demo import seed_demo_database
 
 # Legacy routes (kept 100% backwards-compatible)
@@ -126,6 +126,13 @@ app.register_blueprint(admin_bp, url_prefix="/admin", name="admin_direct")
 # 9. Hackathon Demo Data Blueprints
 app.register_blueprint(demo_bp, url_prefix="/api/demo", name="demo_api")
 app.register_blueprint(demo_bp, url_prefix="/demo", name="demo_direct")
+
+# Ensure baseline system users and departments exist across all environments (prevents cold-start auth failures)
+try:
+    db = get_db()
+    ensure_baseline_system(db)
+except Exception as e:
+    print(f"[Startup] Baseline initialization warning: {e}")
 
 # Seed baseline demo data on initialization only in development or explicit flag
 if os.environ.get("FLASK_ENV") == "development" or os.environ.get("ENABLE_DEMO_SEED") == "true":

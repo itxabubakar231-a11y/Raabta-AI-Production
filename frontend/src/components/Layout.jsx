@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
 import {
   Home, FileText, Activity, Landmark, Menu, X, HelpCircle,
-  TrendingUp, Shield, LogIn, LogOut, User
+  TrendingUp, Shield, LogIn, LogOut, User, Settings
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
@@ -19,6 +19,7 @@ export default function Layout() {
     ...((role === 'officer' || role === 'admin') ? [{ label: 'Command Center', path: '/department', icon: Landmark }] : []),
     { label: 'Civic Hotspots', path: '/insights', icon: TrendingUp },
     ...(role === 'admin' ? [{ label: 'Administration', path: '/admin', icon: Shield }] : []),
+    { label: 'Settings', path: '/settings', icon: Settings },
     { label: 'How It Works', path: '/how-it-works', icon: HelpCircle },
   ]
 
@@ -86,14 +87,24 @@ export default function Layout() {
                     </span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="w-full py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] font-medium flex items-center justify-center gap-1.5 transition-colors border border-slate-200/80 shadow-2xs"
-                >
-                  <LogOut size={12} />
-                  <span>Sign Out</span>
-                </button>
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors border border-slate-200/80 shadow-2xs"
+                  >
+                    <Settings size={12} />
+                    <span>Settings</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors border border-slate-200/80 shadow-2xs cursor-pointer"
+                  >
+                    <LogOut size={12} />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <Link

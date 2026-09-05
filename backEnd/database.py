@@ -142,6 +142,20 @@ class ResilientCollection:
                     self._docs = {str(d.get("_id", d.get("id", idx))): d for idx, d in enumerate(items)}
             except Exception:
                 self._docs = {}
+        else:
+            # Fallback to bundled data store if present (critical for serverless /tmp cold-starts)
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            bundled_file = os.path.join(base_dir, ".data_store", f"{self.name}.json")
+            if os.path.exists(bundled_file):
+                try:
+                    with open(bundled_file, "r", encoding="utf-8") as f:
+                        items = json.load(f)
+                        self._docs = {str(d.get("_id", d.get("id", idx))): d for idx, d in enumerate(items)}
+                    self._save()
+                except Exception:
+                    self._docs = {}
+            else:
+                self._docs = {}
 
     def _save(self):
         try:
@@ -410,3 +424,130 @@ def _setup_indexes(db):
         db.notifications.create_index("user_id")
     except Exception as e:
         print(f"[Database] Index setup warning: {e}")
+
+
+def ensure_baseline_system(db):
+    """
+    Guarantees baseline system users (admin, officer, citizen) and departments exist.
+    Runs on every environment startup to prevent cold-start authentication failures.
+    Preserves existing passwords or accounts if they already exist.
+    """
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+
+        # 1. Baseline Users with verified bcrypt hashes for 'Password123!'
+        baseline_users = [
+            {
+                "_id": "2da2e641-a103-4fc0-b21b-f8aa59359b14",
+                "id": "2da2e641-a103-4fc0-b21b-f8aa59359b14",
+                "email": "admin@raabta.gov.pk",
+                "password_hash": "$2b$12$b3.sc337RAizWDyHBLqrGuCCBh3Sg2qwcbARzQILP3ddfOUVpAFK.",
+                "full_name": "Dr. Sarah Farooq (Commissioner)",
+                "phone": "+92 321 5554321",
+                "role": "admin",
+                "department_id": None,
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "42ed13bd-f617-4e9e-ba8b-9408d3a07898",
+                "id": "42ed13bd-f617-4e9e-ba8b-9408d3a07898",
+                "email": "officer@raabta.gov.pk",
+                "password_hash": "$2b$12$NmnWKbgVIGevbS2aYH9hY.uzLaCi6CnGM4mpT7bcwdqDvqm6ghXc.",
+                "full_name": "Engr. Tariq Mehmood",
+                "phone": "+92 333 5987654",
+                "role": "officer",
+                "department_id": "IESCO",
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            },
+            {
+                "_id": "825bdddc-949e-4a00-9d6e-d1736bf9613c",
+                "id": "825bdddc-949e-4a00-9d6e-d1736bf9613c",
+                "email": "citizen@raabta.gov.pk",
+                "password_hash": "$2b$12$vDrW2qgAe5Sr3/gqVJhKCOE8BmxpXA.gV2BgIlykhGn1mVnwzp36O",
+                "full_name": "Ahmad Bilal Khan",
+                "phone": "+92 300 5123456",
+                "role": "citizen",
+                "department_id": None,
+                "is_active": True,
+                "created_at": now,
+                "updated_at": now
+            }
+        ]
+
+        for u in baseline_users:
+            existing = db.users.find_one({"email": u["email"]})
+            if not existing:
+                db.users.insert_one(u)
+                print(f"[Bootstrap] Seeded baseline user: {u['email']} ({u['role']})")
+
+        # 2. Baseline Departments
+        baseline_departments = [
+            {
+                "_id": "IESCO",
+                "code": "IESCO",
+                "name": "Islamabad Electric Supply Company",
+                "jurisdiction": "Islamabad Capital Territory & Rawalpindi",
+                "sla_hours": 4,
+                "active_officers": 8,
+                "current_load": 14,
+                "emergency_hotline": "118",
+                "created_at": now
+            },
+            {
+                "_id": "CDA_WATER",
+                "code": "CDA_WATER",
+                "name": "CDA Water Supply Wing",
+                "jurisdiction": "Islamabad Sectors G, F, I, H",
+                "sla_hours": 8,
+                "active_officers": 6,
+                "current_load": 9,
+                "emergency_hotline": "051-9252028",
+                "created_at": now
+            },
+            {
+                "_id": "MCI_SAN",
+                "code": "MCI_SAN",
+                "name": "MCI Sanitation Directorate",
+                "jurisdiction": "Islamabad Urban & Rural Zones",
+                "sla_hours": 12,
+                "active_officers": 12,
+                "current_load": 22,
+                "emergency_hotline": "051-9204000",
+                "created_at": now
+            },
+            {
+                "_id": "RESCUE_1122",
+                "code": "RESCUE_1122",
+                "name": "Rescue 1122 Emergency Services",
+                "jurisdiction": "ICT Emergency Response",
+                "sla_hours": 1,
+                "active_officers": 25,
+                "current_load": 5,
+                "emergency_hotline": "1122",
+                "created_at": now
+            },
+            {
+                "_id": "ITP",
+                "code": "ITP",
+                "name": "Islamabad Traffic Police",
+                "jurisdiction": "Expressway, Kashmir Hwy, Murree Rd",
+                "sla_hours": 2,
+                "active_officers": 15,
+                "current_load": 8,
+                "emergency_hotline": "1915",
+                "created_at": now
+            }
+        ]
+
+        for d in baseline_departments:
+            existing = db.departments.find_one({"code": d["code"]})
+            if not existing:
+                db.departments.insert_one(d)
+                print(f"[Bootstrap] Seeded baseline department: {d['code']}")
+    except Exception as e:
+        print(f"[Bootstrap] Warning during baseline data verification: {e}")
+

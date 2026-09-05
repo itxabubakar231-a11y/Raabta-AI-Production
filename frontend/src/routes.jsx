@@ -12,6 +12,9 @@ import InsightsPage from './pages/InsightsPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import SettingsPage from './pages/SettingsPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 
 const router = createBrowserRouter([
@@ -28,6 +31,14 @@ const router = createBrowserRouter([
   {
     path: '/signup',
     element: <SignupPage />,
+  },
+  {
+    path: '/forgot-password',
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPasswordPage />,
   },
   // 3. Application Portal Dashboard (Protected)
   {
@@ -78,6 +89,10 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
+      },
     ],
   },
   // 4. Direct Portal Routes for Seamless Deep-linking (Protected & Role-Guarded)
@@ -124,6 +139,10 @@ const router = createBrowserRouter([
             <AdminPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'settings',
+        element: <SettingsPage />,
       },
     ],
   },
