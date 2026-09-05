@@ -96,14 +96,14 @@ export default function AdminPage() {
             <FileText size={14} className="text-indigo-400" />
             <span>Total Civic Reports</span>
           </span>
-          <p className="text-2xl font-black text-white mt-1">{overview?.total_reports || 6}</p>
+          <p className="text-2xl font-black text-white mt-1">{overview?.total_reports ?? 0}</p>
         </div>
         <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 shadow">
           <span className="text-slate-400 font-semibold flex items-center gap-1">
             <Layers size={14} className="text-amber-400" />
             <span>Proximity Clusters</span>
           </span>
-          <p className="text-2xl font-black text-white mt-1">{overview?.active_clusters || 1}</p>
+          <p className="text-2xl font-black text-white mt-1">{overview?.active_clusters ?? 0}</p>
         </div>
       </div>
 

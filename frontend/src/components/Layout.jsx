@@ -5,7 +5,7 @@ import {
   TrendingUp, Shield, LogIn, LogOut, User
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import DemoBar from './DemoBar'
+import Logo from './Logo'
 import NotificationBell from './NotificationBell'
 
 export default function Layout() {
@@ -13,7 +13,7 @@ export default function Layout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
 
   const navItems = [
-    { label: 'Home', path: '/', icon: Home },
+    { label: 'Overview', path: '/app', icon: Home },
     { label: 'File Incident', path: '/submit', icon: FileText },
     { label: 'Case Dossiers', path: '/track', icon: Activity },
     { label: 'Command Center', path: '/department', icon: Landmark },
@@ -23,30 +23,17 @@ export default function Layout() {
   ]
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* 1-Click Persona Switcher Bar for Evaluation */}
-      <DemoBar />
-
+    <div className="flex flex-col min-h-screen bg-[#0b0f19]">
       <div className="app-shell flex-1">
         {/* SIDEBAR */}
         <aside className={`sidebar ${isMobileNavOpen ? 'mobile-open' : ''}`}>
-          <div className="brand-block" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '14px' }}>
-            <div className="flex items-center gap-3">
-              <div className="brand-mark" style={{ backgroundColor: 'var(--color-primary)' }}>
-                <span>RA</span>
-              </div>
-              <div>
-                <h1 className="text-base font-bold text-white leading-none">Raabta AI</h1>
-                <span className="inline-flex items-center gap-1 rounded bg-[#006c35]/25 border border-[#10b981]/20 px-1.5 py-0.5 text-[9px] font-bold text-[#10b981] uppercase tracking-wider mt-1">
-                  🇵🇰 Official Portal
-                </span>
-              </div>
-            </div>
-            <div className="space-y-1">
+          <div className="brand-block" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
+            <Logo size="md" to="/" />
+            <div className="space-y-0.5 mt-1">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 leading-tight">
                 Civic Intelligence Platform
               </p>
-              <p className="text-[9px] text-[#0b8f4d] font-semibold leading-tight">
+              <p className="text-[9px] text-emerald-400 font-semibold leading-tight">
                 Powered by Google Gemma
               </p>
             </div>

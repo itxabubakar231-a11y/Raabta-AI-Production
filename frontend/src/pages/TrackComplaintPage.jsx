@@ -7,6 +7,7 @@ import {
 import * as api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import RiskScoreGauge from '../components/RiskScoreGauge'
+import EmptyState from '../components/EmptyState'
 
 export default function TrackComplaintPage() {
   const [searchParams] = useSearchParams()
@@ -189,13 +190,17 @@ export default function TrackComplaintPage() {
             )
           })
         ) : (
-          <div className="p-12 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-slate-800 space-y-2">
-            <AlertTriangle size={32} className="mx-auto text-slate-600" />
-            <h4 className="text-sm font-bold text-white">No Complaints Found</h4>
-            <p className="text-xs text-slate-400">
-              No matching records found for "{searchQuery}". Try searching by ID or submitting a new complaint.
-            </p>
-          </div>
+          <EmptyState
+            title={searchQuery ? 'No matching records' : 'No activity yet'}
+            description={
+              searchQuery
+                ? `No records found matching "${searchQuery}". Please check the Tracking ID or filter criteria.`
+                : 'Your first practice session or civic dossier will appear here once you get started.'
+            }
+            actionText={searchQuery ? 'Clear Search' : 'File Incident Report'}
+            actionLink={searchQuery ? undefined : '/submit'}
+            onAction={searchQuery ? () => setSearchQuery('') : undefined}
+          />
         )}
       </section>
     </div>

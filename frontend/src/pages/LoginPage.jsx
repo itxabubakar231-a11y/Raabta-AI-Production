@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { LogIn, Shield, User, Lock, Sparkles, ArrowRight } from 'lucide-react'
+import { LogIn, Lock, Mail, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import Logo from '../components/Logo'
 
 export default function LoginPage() {
-  const { login, quickSwitchDemo } = useAuth()
+  const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -25,137 +27,113 @@ export default function LoginPage() {
         navigate('/track')
       }
     } catch (err) {
-      setError(err.message || 'Login failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleDemoLogin(role) {
-    setLoading(true)
-    setError('')
-    try {
-      const user = await quickSwitchDemo(role)
-      if (user.role === 'officer') {
-        navigate('/department')
-      } else if (user.role === 'admin') {
-        navigate('/admin')
-      } else {
-        navigate('/track')
-      }
-    } catch (err) {
-      setError(err.message || 'Demo login failed')
+      setError(err.message || 'Unable to sign in. Please check your credentials.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Header Block */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 mb-2 shadow-lg shadow-emerald-950">
-            <Shield size={28} />
-          </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Raabta AI Portal</h2>
-          <p className="text-xs text-slate-400">
-            Official Civic Intelligence Platform of Pakistan
+    <div className="min-h-screen bg-[#070a12] text-white flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center space-y-4">
+        <Logo size="lg" to="/" className="mx-auto" />
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Sign In to Raabta AI
+          </h1>
+          <p className="mt-1.5 text-xs sm:text-sm text-slate-400">
+            Access your personalized learning and communication dashboard
           </p>
         </div>
+      </div>
 
-        {/* Demo Fast-Login Cards */}
-        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/25 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between text-xs text-emerald-400 font-bold mb-1">
-            <span className="flex items-center gap-1.5">
-              <Sparkles size={14} />
-              <span>1-Click Hackathon Evaluation Logins</span>
-            </span>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('citizen')}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-slate-200 text-xs font-semibold flex flex-col items-center gap-1 transition-all"
-            >
-              <User size={14} className="text-emerald-400" />
-              <span>Citizen</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('officer')}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-slate-200 text-xs font-semibold flex flex-col items-center gap-1 transition-all"
-            >
-              <Shield size={14} className="text-blue-400" />
-              <span>Officer (IESCO)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('admin')}
-              className="p-2 rounded-lg bg-slate-800 hover:bg-emerald-600/30 hover:border-emerald-500/50 border border-slate-700 text-slate-200 text-xs font-semibold flex flex-col items-center gap-1 transition-all"
-            >
-              <Sparkles size={14} className="text-amber-400" />
-              <span>Admin</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Standard Form */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl space-y-4">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+        <div className="bg-slate-900/80 backdrop-blur-xl py-8 px-6 sm:px-8 rounded-2xl border border-white/10 shadow-2xl space-y-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-lg bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-medium">
+              <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-400 text-xs font-medium leading-relaxed">
                 {error}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Email Address</label>
+              <label htmlFor="email" className="block text-xs font-semibold text-slate-300">
+                Email Address
+              </label>
               <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <Mail size={16} />
+                </span>
                 <input
+                  id="email"
                   type="email"
                   required
-                  placeholder="name@example.gov.pk"
+                  autoComplete="email"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs sm:text-sm transition-all"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300">Password</label>
-              </div>
+              <label htmlFor="password" className="block text-xs font-semibold text-slate-300">
+                Password
+              </label>
               <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                  <Lock size={16} />
+                </span>
                 <input
-                  type="password"
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs sm:text-sm transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shadow-lg shadow-emerald-950"
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
             >
-              <LogIn size={15} />
-              <span>{loading ? 'Authenticating...' : 'Sign In to Portal'}</span>
+              {loading ? (
+                <span>Signing in...</span>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={15} />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="text-center pt-2 border-t border-slate-800 text-xs text-slate-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-emerald-400 font-semibold hover:underline inline-flex items-center gap-0.5">
-              <span>Register as Citizen</span>
-              <ArrowRight size={12} />
+          <div className="pt-4 border-t border-white/5 text-center text-xs text-slate-400">
+            Don't have an account yet?{' '}
+            <Link to="/signup" className="text-indigo-400 hover:text-indigo-300 font-semibold underline underline-offset-2">
+              Create an account
             </Link>
           </div>
+        </div>
+
+        <div className="mt-6 text-center">
+          <Link to="/" className="text-xs text-slate-500 hover:text-slate-400 transition-colors">
+            ← Back to Home
+          </Link>
         </div>
       </div>
     </div>

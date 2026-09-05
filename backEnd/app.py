@@ -127,13 +127,14 @@ app.register_blueprint(admin_bp, url_prefix="/admin", name="admin_direct")
 app.register_blueprint(demo_bp, url_prefix="/api/demo", name="demo_api")
 app.register_blueprint(demo_bp, url_prefix="/demo", name="demo_direct")
 
-# Seed baseline demo data on initialization if empty
-try:
-    db = get_db()
-    if db.civic_reports.count_documents({}) == 0:
-        seed_demo_database(reset=False)
-except Exception as e:
-    print(f"[Startup] Demo seeder skipped: {e}")
+# Seed baseline demo data on initialization only in development or explicit flag
+if os.environ.get("FLASK_ENV") == "development" or os.environ.get("ENABLE_DEMO_SEED") == "true":
+    try:
+        db = get_db()
+        if db.civic_reports.count_documents({}) == 0:
+            seed_demo_database(reset=False)
+    except Exception as e:
+        print(f"[Startup] Demo seeder skipped: {e}")
 
 # Home Route
 @app.route("/", methods=["GET", "POST"], strict_slashes=False)

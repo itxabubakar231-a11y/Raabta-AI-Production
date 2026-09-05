@@ -41,21 +41,16 @@ export default function InsightsPage() {
 
   const metrics = trends?.metrics || {
     total_reports: hotspots.length,
-    active_open: Math.max(0, hotspots.length - 2),
-    resolved_count: 2,
+    active_open: hotspots.length,
+    resolved_count: 0,
     critical_count: hotspots.filter(h => (h.risk_score || 0) >= 75).length,
-    citizen_satisfaction_rate: 94.2,
-    sla_compliance_rate: 92.6,
-    clusters_formed: 1,
-    duplicate_reports_merged: 2
+    citizen_satisfaction_rate: 0,
+    sla_compliance_rate: 0,
+    clusters_formed: 0,
+    duplicate_reports_merged: 0
   }
 
-  const categoryBreakdown = trends?.category_breakdown || {
-    "Roads & Infrastructure": 3,
-    "Electrical Hazards": 2,
-    "Water & Sanitation": 1,
-    "Gas Leaks & Pipelines": 1
-  }
+  const categoryBreakdown = trends?.category_breakdown || {}
 
   return (
     <div className="space-y-6 pb-12">
@@ -262,23 +257,29 @@ export default function InsightsPage() {
           </div>
 
           <div className="space-y-3">
-            {Object.entries(categoryBreakdown).map(([cat, count]) => {
-              const pct = Math.round((count / (metrics.total_reports || 1)) * 100)
-              return (
-                <div key={cat} className="space-y-1">
-                  <div className="flex items-center justify-between text-slate-300 font-medium">
-                    <span>{cat}</span>
-                    <span className="font-bold text-white">{count} cases ({pct}%)</span>
+            {Object.keys(categoryBreakdown).length > 0 ? (
+              Object.entries(categoryBreakdown).map(([cat, count]) => {
+                const pct = Math.round((count / (metrics.total_reports || 1)) * 100)
+                return (
+                  <div key={cat} className="space-y-1">
+                    <div className="flex items-center justify-between text-slate-300 font-medium">
+                      <span>{cat}</span>
+                      <span className="font-bold text-white">{count} cases ({pct}%)</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            ) : (
+              <div className="py-8 text-center text-slate-500 text-xs">
+                No categorized incidents recorded yet.
+              </div>
+            )}
           </div>
         </div>
 
