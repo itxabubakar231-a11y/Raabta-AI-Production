@@ -31,6 +31,11 @@ config.env
 **/*.m4a
 **/*.wav
 
+# Local runtime data
+**/.data_store/
+.vercel
+
 # OS files
 .DS_Store
 Thumbs.db
+

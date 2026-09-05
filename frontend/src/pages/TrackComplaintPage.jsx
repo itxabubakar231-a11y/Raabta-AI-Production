@@ -1,183 +1,203 @@
-import { useState } from 'react'
-import { Search, MapPin, Building, AlertTriangle, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import {
+  Search, MapPin, Building, AlertTriangle, Clock,
+  FileText, Download, ExternalLink, RefreshCw, CheckCircle2, ShieldAlert
+} from 'lucide-react'
+import * as api from '../services/api'
+import { useAuth } from '../context/AuthContext'
+import RiskScoreGauge from '../components/RiskScoreGauge'
 
-const defaultTrackingData = [
-  {
-    id: "COMP-2026-8941",
-    status: "In progress",
-    title: "Deep pothole on main Boulevard",
-    location: "Gulberg III, Lahore, Pakistan",
-    department: "Traffic Engineering & Planning Agency (TEPA)",
-    severity: "High",
-    timeline: [
-      "Complaint submitted via Raabta AI",
-      "AI analyzed & categorized issue",
-      "Assigned to TEPA (Traffic Engineering & Planning Agency)",
-      "Team dispatched for road repair"
-    ]
-  },
-  {
-    id: "COMP-2026-3024",
-    status: "Resolved",
-    title: "Garbage accumulation near park entrance",
-    location: "Sector F-10, Islamabad, Pakistan",
-    department: "Waste Management Company",
-    severity: "High",
-    timeline: [
-      "Complaint submitted via Raabta AI",
-      "AI analyzed & categorized issue",
-      "Assigned to Waste Management Company",
-      "Garbage cleared and area cleaned"
-    ]
-  },
-  {
-    id: "COMP-2026-1049",
-    status: "Submitted",
-    title: "Water pipeline leakage",
-    location: "DHA Phase 5, Karachi, Pakistan",
-    department: "Water Board / WASA",
-    severity: "Medium",
-    timeline: [
-      "Complaint submitted via Raabta AI",
-      "AI analyzed & categorized issue",
-      "Awaiting assignment to WASA field team"
-    ]
-  }
-]
+export default function TrackComplaintPage() {
+  const [searchParams] = useSearchParams()
+  const initialQuery = searchParams.get('tracking_id') || searchParams.get('id') || ''
 
-function TrackComplaintPage({ trackingData = defaultTrackingData }) {
-  const [searchQuery, setSearchQuery] = useState('')
+  const { currentUser, token } = useAuth()
+  const [searchQuery, setSearchQuery] = useState(initialQuery)
+  const [reports, setReports] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredData = trackingData.filter(item => 
-    item.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.department.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const getStatusBadge = (status) => {
-    switch (status.toLowerCase()) {
-      case 'resolved':
-        return <span className="badge badge-green">Resolved</span>
-      case 'in progress':
-        return <span className="badge badge-blue">In Progress</span>
-      default:
-        return <span className="badge badge-amber">Submitted</span>
+  async function loadReports() {
+    setLoading(true)
+    try {
+      // If logged in citizen, try to get my reports, otherwise list recent
+      const res = await api.getReports({ limit: 50 })
+      setReports(res.reports || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }
 
+  useEffect(() => {
+    loadReports()
+  }, [token])
+
+  const filteredReports = reports.filter(item => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return true
+    return (
+      (item.tracking_id || '').toLowerCase().includes(q) ||
+      (item.title || '').toLowerCase().includes(q) ||
+      (item.department_name || item.department_id || '').toLowerCase().includes(q) ||
+      (item.location?.address || item.location?.city || '').toLowerCase().includes(q)
+    )
+  })
+
   return (
-    <div className="space-y-8">
-      {/* HEADER SECTION */}
-      <section className="glass-panel border-slate-800 bg-slate-950/20">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-6 pb-12">
+      {/* Header Section */}
+      <section className="glass-panel border-slate-800 bg-slate-900/60 p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <span className="badge badge-purple flex items-center gap-1.5 w-fit">
-              <Clock size={12} />
-              Case Auditing
+            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1.5">
+              <Clock size={14} />
+              <span>Citizen Case Tracking & Auditing</span>
             </span>
-            <h2 className="mt-3 text-3xl font-extrabold text-white tracking-tight">Track Your Civic Complaint</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Auditing system for submission lifecycle, automated Gemma AI categorization, and department handoffs.
+            <h1 className="mt-2 text-2xl font-black text-white tracking-tight">
+              Track Civic Incident Dossiers
+            </h1>
+            <p className="mt-1 text-xs text-slate-400">
+              Real-time audit records, calculated Civic Risk Scores, and official downloadable Government dossiers.
             </p>
           </div>
 
-          <div className="relative w-full max-w-sm">
-            <span className="absolute left-3.5 top-3 text-slate-500">
-              <Search size={18} />
-            </span>
-            <input 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-800 bg-slate-950/50 text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-sm transition-all" 
-              placeholder="Filter by ID, issue or agency..." 
-            />
+          <div className="flex items-center gap-2 w-full lg:max-w-md">
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-2.5 text-slate-500">
+                <Search size={16} />
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-700 bg-slate-950 text-white placeholder-slate-500 focus:border-emerald-500 outline-none text-xs transition-all"
+                placeholder="Search by Tracking ID (e.g. RA-2026-1000), issue, or city..."
+              />
+            </div>
+            <button
+              type="button"
+              onClick={loadReports}
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200"
+              title="Refresh"
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin text-emerald-400' : ''} />
+            </button>
           </div>
         </div>
       </section>
 
-      {/* TRACKING LIST */}
+      {/* Reports List */}
       <section className="space-y-4">
-        {filteredData.length > 0 ? (
-          filteredData.map((item) => (
-            <article key={item.id} className="glass-panel border-slate-800 bg-slate-900/10 p-6">
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-                
-                {/* CASE SUMMARY */}
-                <div className="space-y-4 flex-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-sm font-bold text-blue-400">{item.id}</span>
-                    {getStatusBadge(item.status)}
-                    <span className={`badge ${item.severity.toLowerCase() === 'high' ? 'badge-red' : 'badge-blue'}`}>
-                      {item.severity} Priority
-                    </span>
-                  </div>
+        {loading ? (
+          <div className="p-12 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+            <RefreshCw size={20} className="animate-spin text-emerald-400" />
+            <span>Loading active civic dossiers...</span>
+          </div>
+        ) : filteredReports.length > 0 ? (
+          filteredReports.map((item) => {
+            const risk = item.civic_risk_score || {}
+            const pdfUrl = api.getReportPdfUrl(item.id || item._id || item.tracking_id)
+            const isResolved = item.status === 'resolved'
+            const isDisputed = item.status === 'disputed'
+            const isClosed = item.status === 'closed'
 
-                  <div>
-                    <h3 className="text-xl font-bold text-white">{item.title}</h3>
-                    <p className="mt-1.5 text-xs text-slate-400 flex items-center gap-1">
-                      <MapPin size={12} className="text-slate-500" />
-                      <span>{item.location}</span>
-                    </p>
-                  </div>
-
-                  <div className="pt-2 grid gap-4 sm:grid-cols-2 max-w-md">
-                    <div className="rounded-xl border border-slate-900 bg-slate-950/40 p-3">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                        <Building size={10} />
-                        <span>Responsible Agency</span>
+            return (
+              <article
+                key={item.id || item._id}
+                className="p-5 rounded-2xl border border-slate-800 bg-slate-900/70 hover:border-slate-700 transition-all space-y-4"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                  {/* Left: Summary */}
+                  <div className="space-y-2 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-emerald-400 px-2.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30">
+                        {item.tracking_id}
                       </span>
-                      <p className="mt-1 text-xs font-semibold text-slate-200">{item.department}</p>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                        isClosed ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+                        isDisputed ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                        isResolved ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30 animate-pulse' :
+                        'bg-slate-800 text-slate-300 border-slate-700'
+                      }`}>
+                        {item.status}
+                      </span>
+                      {item.cluster_id && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          PROXIMITY CLUSTER LINKED
+                        </span>
+                      )}
+                      <RiskScoreGauge riskData={item.civic_risk_score} compact={true} />
                     </div>
-                  </div>
-                </div>
 
-                {/* TIMELINE TRACKER */}
-                <div className="w-full lg:max-w-md rounded-2xl border border-slate-900 bg-slate-950/50 p-5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-900 pb-3 mb-4">
-                    Audit Timeline
-                  </h4>
-                  
-                  <div className="tracking-timeline">
-                    {item.timeline.map((step, index) => {
-                      // Mark all steps as complete except the last step if not resolved
-                      const isLastStep = index === item.timeline.length - 1
-                      const isResolved = item.status.toLowerCase() === 'resolved'
-                      const isStepDone = !isLastStep || isResolved
-                      
-                      return (
-                        <div 
-                          key={`${item.id}-${step}`} 
-                          className={`tracking-step ${isStepDone ? 'done' : ''}`}
+                    <h3 className="text-lg font-bold text-white leading-tight">
+                      {item.title}
+                    </h3>
+
+                    <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+                      {item.description}
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-1">
+                      <span className="flex items-center gap-1">
+                        <Building size={13} className="text-emerald-400" />
+                        <span>{item.department_name || item.department_id || 'Municipal Authority'}</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin size={13} className="text-emerald-400" />
+                        <span>{item.location?.address || item.location?.city || 'Location on record'}</span>
+                      </span>
+                    </div>
+
+                    {isResolved && (
+                      <div className="p-3 rounded-lg bg-indigo-950/40 border border-indigo-500/40 text-xs text-indigo-200 flex items-center justify-between gap-3 mt-2">
+                        <span className="font-semibold">
+                          Duty Officer marked this issue resolved. Your verification is required!
+                        </span>
+                        <Link
+                          to={`/report/${item.id || item._id}`}
+                          className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shrink-0 shadow"
                         >
-                          <div className="flex items-start gap-3">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-[10px] font-bold text-slate-400 border border-slate-800">
-                              {isStepDone ? '✓' : index + 1}
-                            </span>
-                            <div>
-                              <span className={`text-xs font-semibold ${isStepDone ? 'text-slate-200' : 'text-slate-400'}`}>
-                                {step}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
+                          Verify Resolution
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Actions */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2 min-w-[200px] shrink-0">
+                    <Link
+                      to={`/report/${item.id || item._id}`}
+                      className="py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow transition-colors"
+                    >
+                      <FileText size={14} />
+                      <span>View Full Dossier</span>
+                    </Link>
+
+                    <a
+                      href={pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 transition-colors"
+                    >
+                      <Download size={14} />
+                      <span>Download PDF Dossier</span>
+                    </a>
                   </div>
                 </div>
-
-              </div>
-            </article>
-          ))
+              </article>
+            )
+          })
         ) : (
-          <div className="glass-panel p-12 text-center text-slate-500">
-            <AlertTriangle size={32} className="mx-auto text-slate-700 mb-3" />
-            <p className="font-bold text-slate-400 text-sm">No complaints found</p>
-            <p className="text-xs text-slate-500 mt-1">Try searching for a different ID or keyword.</p>
+          <div className="p-12 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-slate-800 space-y-2">
+            <AlertTriangle size={32} className="mx-auto text-slate-600" />
+            <h4 className="text-sm font-bold text-white">No Complaints Found</h4>
+            <p className="text-xs text-slate-400">
+              No matching records found for "{searchQuery}". Try searching by ID or submitting a new complaint.
+            </p>
           </div>
         )}
       </section>
     </div>
   )
 }
-
-export default TrackComplaintPage

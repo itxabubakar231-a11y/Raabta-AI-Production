@@ -7,3 +7,9 @@ faster-whisper
 Werkzeug
 requests
 edge-tts
+pymongo
+bcrypt
+pyjwt
+dnspython
+reportlab
+

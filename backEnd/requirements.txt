@@ -7,4 +7,10 @@ faster-whisper
 Werkzeug
 gunicorn
 requests
-edge-tts
+edge-tts
+pymongo
+bcrypt
+pyjwt
+dnspython
+reportlab
+

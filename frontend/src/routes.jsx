@@ -4,12 +4,15 @@ import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import SubmitComplaintPage from './pages/SubmitComplaintPage'
 import TrackComplaintPage from './pages/TrackComplaintPage'
+import ReportDetailPage from './pages/ReportDetailPage'
 import DepartmentPage from './pages/DepartmentPage'
+import InsightsPage from './pages/InsightsPage'
+import AdminPage from './pages/AdminPage'
+import LoginPage from './pages/LoginPage'
+import SignupPage from './pages/SignupPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 
-
 const router = createBrowserRouter([
-
   {
     path: '/',
     element: <Layout />,
@@ -27,8 +30,28 @@ const router = createBrowserRouter([
         element: <TrackComplaintPage />,
       },
       {
+        path: 'report/:id',
+        element: <ReportDetailPage />,
+      },
+      {
         path: 'department',
         element: <DepartmentPage />,
+      },
+      {
+        path: 'insights',
+        element: <InsightsPage />,
+      },
+      {
+        path: 'admin',
+        element: <AdminPage />,
+      },
+      {
+        path: 'login',
+        element: <LoginPage />,
+      },
+      {
+        path: 'signup',
+        element: <SignupPage />,
       },
       {
         path: 'how-it-works',
@@ -36,7 +59,6 @@ const router = createBrowserRouter([
       },
     ],
   },
-
   {
     path: '/app',
     element: <Layout />,
@@ -54,8 +76,20 @@ const router = createBrowserRouter([
         element: <TrackComplaintPage />,
       },
       {
+        path: 'report/:id',
+        element: <ReportDetailPage />,
+      },
+      {
         path: 'department',
         element: <DepartmentPage />,
+      },
+      {
+        path: 'insights',
+        element: <InsightsPage />,
+      },
+      {
+        path: 'admin',
+        element: <AdminPage />,
       },
       {
         path: 'how-it-works',
@@ -63,13 +97,10 @@ const router = createBrowserRouter([
       },
     ],
   },
-
   {
     path: '*',
     element: <Navigate to="/" replace />,
   }
-
 ])
 
-
-export default router
+export default router
