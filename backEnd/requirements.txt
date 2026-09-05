@@ -13,4 +13,4 @@ bcrypt
 pyjwt
 dnspython
 reportlab
-
+certifi

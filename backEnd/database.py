@@ -22,6 +22,12 @@ except ImportError:
     PYMONGO_AVAILABLE = False
     ObjectId = None
 
+try:
+    import certifi
+    CA_FILE = certifi.where()
+except Exception:
+    CA_FILE = None
+
 
 def serialize_doc(doc: Any) -> Any:
     """Recursively serializes MongoDB documents / dicts for JSON responses."""
@@ -522,7 +528,13 @@ def get_db():
 
     if PYMONGO_AVAILABLE and mongodb_uri:
         try:
-            client = MongoClient(mongodb_uri, serverSelectionTimeoutMS=5000)
+            client_options = {
+                "serverSelectionTimeoutMS": 10000,
+                "connectTimeoutMS": 10000
+            }
+            if CA_FILE:
+                client_options["tlsCAFile"] = CA_FILE
+            client = MongoClient(mongodb_uri, **client_options)
             # Verify connectivity
             client.admin.command('ping')
             _db_instance = client[db_name]

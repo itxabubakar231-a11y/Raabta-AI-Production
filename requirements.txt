@@ -13,4 +13,4 @@ pyjwt
 dnspython
 reportlab
 gunicorn
-
+certifi
