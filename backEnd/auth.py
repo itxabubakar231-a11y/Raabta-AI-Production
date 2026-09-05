@@ -31,12 +31,15 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
-def generate_token(user_id: str, role: str, email: str) -> str:
+def generate_token(user_id: str, role: str, email: str, department_id: str = None) -> str:
     """Generates a signed JWT authentication token."""
     payload = {
         "sub": str(user_id),
+        "id": str(user_id),
         "role": role,
         "email": email,
+        "department_id": department_id,
+        "department": department_id,
         "iat": datetime.datetime.now(datetime.timezone.utc),
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=JWT_EXPIRATION_HOURS)
     }

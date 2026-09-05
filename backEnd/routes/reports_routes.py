@@ -348,8 +348,8 @@ def calculate_priority_endpoint():
 def create_report():
     db = get_db()
     current_user = getattr(request, "current_user", None)
-    citizen_id = current_user.get("id") if current_user else None
-    citizen_name = current_user.get("full_name") if current_user else "Citizen"
+    citizen_id = str(current_user.get("id") or current_user.get("_id")) if current_user else None
+    citizen_name = current_user.get("full_name") if current_user else (data.get("citizen_name") if 'data' in locals() and isinstance(data, dict) else "Citizen")
 
     # Support JSON or multipart/form-data
     audio_base64 = None
@@ -725,8 +725,14 @@ def get_report_detail(report_id):
     if auth_header:
         try:
             from auth import decode_token
+            from database import find_user
             token = auth_header.replace("Bearer ", "").strip()
-            current_user = decode_token(token)
+            payload = decode_token(token)
+            user_from_db = find_user(db, payload.get("sub") or payload.get("id"))
+            if user_from_db:
+                current_user = serialize_doc(user_from_db)
+            else:
+                current_user = payload
         except Exception:
             current_user = None
 

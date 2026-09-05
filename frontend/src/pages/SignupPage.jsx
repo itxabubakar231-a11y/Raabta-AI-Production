@@ -21,7 +21,7 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
     try {
-      await signup({
+      const user = await signup({
         full_name: fullName,
         email,
         password,
@@ -29,7 +29,11 @@ export default function SignupPage() {
         role,
         department_id: null
       })
-      navigate('/track')
+      if (user?.role === 'officer' || user?.role === 'admin') {
+        navigate('/gov', { replace: true })
+      } else {
+        navigate('/app', { replace: true })
+      }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {

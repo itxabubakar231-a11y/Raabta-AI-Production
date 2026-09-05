@@ -89,7 +89,7 @@ def signup():
         "timestamp": now
     })
 
-    token = generate_token(user_id, role, email)
+    token = generate_token(user_id, role, email, department_id=user_doc.get("department_id"))
     safe_user = serialize_doc(user_doc)
     safe_user.pop("password_hash", None)
 
@@ -121,9 +121,10 @@ def login():
     if not user.get("is_active", True):
         return jsonify({"success": False, "error": "Account is deactivated. Contact administration."}), 403
 
-    user_id = str(user.get("_id", user.get("id")))
+    user_id = str(user.get("_id") or user.get("id"))
     role = user.get("role", "citizen")
-    token = generate_token(user_id, role, email)
+    department_id = user.get("department_id")
+    token = generate_token(user_id, role, email, department_id=department_id)
 
     safe_user = serialize_doc(user)
     safe_user.pop("password_hash", None)

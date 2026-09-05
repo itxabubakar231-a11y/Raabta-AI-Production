@@ -4,11 +4,11 @@ import { useAuth } from '../context/AuthContext'
 import Logo from './Logo'
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { currentUser, token, loading, logout } = useAuth()
+  const { currentUser, token, loading, authState, logout } = useAuth()
   const location = useLocation()
 
-  // 1. Session Verification Loading Screen
-  if (loading) {
+  // 1. Session Verification Loading Screen (never redirect while INITIALIZING)
+  if (loading || authState === 'INITIALIZING') {
     return (
       <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 space-y-4">
         <Logo size="lg" to={null} animated={false} theme="light" />
@@ -20,8 +20,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     )
   }
 
-  // 2. Unauthenticated Redirect to Login
-  if (!currentUser || !token) {
+  // 2. Unauthenticated Redirect to Login (only after session initialization concludes)
+  if (!currentUser || !token || authState === 'UNAUTHENTICATED') {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
   }
 
