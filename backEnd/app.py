@@ -179,6 +179,17 @@ def vercel_entrypoint():
         "message": "Direct function entrypoint called. Please send requests to /api/reports, /api/report, /api/text-report, or /api/voice-report."
     }), 400
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    traceback.print_exc()
+    return jsonify({
+        "status": "error",
+        "error": str(e),
+        "type": type(e).__name__
+    }), 500
+
+
 class VercelPathFixMiddleware:
     """
     WSGI middleware that restores the real requested path on Vercel.

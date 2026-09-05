@@ -308,7 +308,10 @@ class ResilientDatabase:
 
     def __init__(self, storage_dir: str):
         self.storage_dir = storage_dir
-        os.makedirs(storage_dir, exist_ok=True)
+        try:
+            os.makedirs(storage_dir, exist_ok=True)
+        except Exception:
+            pass
         self._collections: Dict[str, ResilientCollection] = {}
 
     def __getattr__(self, name: str) -> ResilientCollection:
@@ -351,9 +354,13 @@ def get_db():
         except Exception as e:
             print(f"[Database] MongoDB connection failed ({e}). Initializing resilient document store...")
 
-    # Fallback to persistent local document storage
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(base_dir, ".data_store")
+    # Fallback to persistent local document storage (uses /tmp on Vercel/serverless)
+    if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        data_dir = os.path.join("/tmp", ".data_store")
+    else:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(base_dir, ".data_store")
+
     _db_instance = ResilientDatabase(data_dir)
     _db_type = "resilient_fallback"
     print(f"[Database] Running on Resilient Document Store ({data_dir})")
