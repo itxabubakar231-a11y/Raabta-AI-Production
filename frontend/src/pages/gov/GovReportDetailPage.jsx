@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, Building, MapPin, Calendar, Shield, Clock,
   CheckCircle2, AlertTriangle, MessageSquare, Sparkles,
-  Volume2, RefreshCw, Download, FileText, UserCheck, Edit3, X, Camera
+  Volume2, RefreshCw, Download, FileText, UserCheck, Edit3, X, Camera, HelpCircle
 } from 'lucide-react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import * as api from '../../services/api'
@@ -398,6 +398,68 @@ export default function GovReportDetailPage() {
             )}
           </div>
         )}
+
+        {/* Citizen Clarifications & Follow-up Information */}
+        <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-800 font-bold">
+            <HelpCircle size={15} className="text-emerald-600" />
+            <span>Clarifying Questions & Follow-up Information</span>
+          </div>
+
+          {report.missing_information_answers && report.missing_information_answers.length > 0 ? (
+            <div className="space-y-2 pt-1">
+              <p className="text-[11px] text-slate-500">
+                The citizen provided the following clarifications during initial triage:
+              </p>
+              {report.missing_information_answers.map((item, idx) => (
+                <div key={idx} className="p-2.5 rounded-lg bg-white border border-slate-200 space-y-0.5">
+                  <p className="font-semibold text-slate-700">Q: {item.question}</p>
+                  <p className="font-bold text-emerald-800 pl-2 border-l-2 border-emerald-500">
+                    A: {item.answer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-slate-500 italic">
+              No additional information was required.
+            </p>
+          )}
+
+          {/* Pending Officer Request Status */}
+          {report.needs_citizen_response && report.citizen_info_request && (
+            <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-800">
+                <Clock size={14} />
+                <span>Awaiting Citizen Response to Information Request</span>
+              </div>
+              <p className="text-[11px] italic bg-white/70 p-2 rounded border border-amber-200">
+                "{report.citizen_info_request.note}"
+              </p>
+              <p className="text-[10px] text-amber-700">
+                Requested by {report.citizen_info_request.requested_by || 'Officer'}
+                {report.citizen_info_request.requested_at && ` on ${new Date(report.citizen_info_request.requested_at).toLocaleString()}`}
+              </p>
+            </div>
+          )}
+
+          {/* Citizen Responses to Officer */}
+          {report.citizen_responses && report.citizen_responses.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-200 space-y-1.5">
+              <span className="font-bold text-[10px] uppercase tracking-wider text-slate-500 block">
+                Citizen Responses Received:
+              </span>
+              {report.citizen_responses.map((cr, idx) => (
+                <div key={idx} className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs">
+                  <p className="text-slate-800 font-medium">{cr.response || cr.note || JSON.stringify(cr)}</p>
+                  <span className="text-[10px] text-slate-400 block mt-0.5">
+                    {cr.created_at ? new Date(cr.created_at).toLocaleString() : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Two Column Layout: Risk & Map vs Timeline & Notes */}

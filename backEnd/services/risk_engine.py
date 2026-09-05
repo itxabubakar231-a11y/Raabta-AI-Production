@@ -56,13 +56,30 @@ def calculate_civic_risk(
     location_text: str = "",
     lat: Optional[float] = None,
     lon: Optional[float] = None,
-    existing_duplicate_count: int = 0
+    existing_duplicate_count: int = 0,
+    follow_up_answers: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Computes a mathematically grounded, fully transparent 0-100 Civic Risk Score.
-    Returns breakdown across all 5 dimensions.
+    Returns breakdown across all 5 dimensions:
+    - Public Safety Risk (30%)
+    - Infrastructure Severity (25%)
+    - Citizen Impact (20%)
+    - Vulnerable / High-Density Location (15%)
+    - Evidence Confidence (10%)
     """
-    text_corpus = f"{title} {description} {location_text}".lower()
+    follow_up_context = ""
+    answered_count = 0
+    if follow_up_answers:
+        for item in follow_up_answers:
+            if isinstance(item, dict):
+                q = str(item.get("question") or item.get("question_id") or "").strip()
+                a = str(item.get("answer") or "").strip()
+                if a:
+                    answered_count += 1
+                    follow_up_context += f" {q}: {a}."
+
+    text_corpus = f"{title} {description} {location_text} {follow_up_context}".lower()
 
     # 1. Public Safety Risk (0-100) - Weight: 30%
     normalized_cat = category.lower().replace(" ", "_").replace("&", "_").replace("-", "_")
@@ -76,11 +93,15 @@ def calculate_civic_risk(
             keyword_matches.append(kw)
     safety_keyword_boost = min(safety_keyword_boost, 45)
 
+    # Additional safety boost if follow-up answers confirm direct pedestrian/children hazard
+    if any(k in follow_up_context.lower() for k in ["yes", "danger", "child", "pedestrian", "urgent", "active"]):
+        safety_keyword_boost = min(45, safety_keyword_boost + 10)
+
     safety_raw = min(100, max(10, base_safety * 0.6 + safety_keyword_boost * 1.2))
 
     # 2. Infrastructure Severity (0-100) - Weight: 25%
     severity_raw = min(100, max(15, base_safety * 0.85))
-    if any(term in text_corpus for term in ["collapsed", "broken", "burst", "severed", "destroyed", "heavy"]):
+    if any(term in text_corpus for term in ["collapsed", "broken", "burst", "severed", "destroyed", "heavy", "deep", "crater"]):
         severity_raw = min(100, severity_raw + 20)
     if any(term in text_corpus for term in ["minor", "small", "cosmetic", "paint", "scratch"]):
         severity_raw = max(10, severity_raw - 25)
@@ -90,7 +111,7 @@ def calculate_civic_risk(
     impact_raw = 30
     if any(term in text_corpus for term in ["whole area", "entire neighborhood", "sector", "colony", "thousands", "everyone"]):
         impact_raw += 40
-    elif any(term in text_corpus for term in ["street", "block", "market", "commuters", "traffic"]):
+    elif any(term in text_corpus for term in ["street", "block", "market", "commuters", "traffic", "busy"]):
         impact_raw += 25
     else:
         impact_raw += 15
@@ -115,6 +136,10 @@ def calculate_civic_risk(
         evidence_raw = max(45, int(evidence_score * 80))
     else:
         evidence_raw = max(20, int(evidence_score * 50))
+
+    # Answering follow-up questions boosts confidence by verifying details
+    if answered_count > 0:
+        evidence_raw = min(100, evidence_raw + min(answered_count * 8, 20))
 
     # Calculate weighted total
     w_safety = 0.30

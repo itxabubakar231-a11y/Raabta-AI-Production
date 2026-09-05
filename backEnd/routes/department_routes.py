@@ -502,8 +502,10 @@ def request_more_info(report_id):
             "created_at": now
         })
 
+    updated_rep = db.civic_reports.find_one({"_id": report.get("_id")})
     return jsonify({
         "success": True,
-        "message": "Information request sent to citizen."
+        "message": "Information request sent to citizen.",
+        "report": serialize_doc(updated_rep)
     }), 200
 

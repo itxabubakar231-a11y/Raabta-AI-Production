@@ -239,7 +239,19 @@ def analyze_report():
         has_gps=(lat_f is not None and lon_f is not None)
     )
 
-    # Step 5: Deterministic Civic Priority Score (0-100)
+    # Follow-up answers if provided (for priority recalculation)
+    provided_answers = data.get("answers") or data.get("missing_information_answers") or []
+
+    # Step 5: Follow-up Questions (1-2 targeted questions)
+    follow_up_questions = generate_missing_information_questions(
+        category=dept_rec["category"],
+        issue=detected_issue,
+        description=text_input,
+        location_text=address
+    )
+    needs_follow_up = len(follow_up_questions) > 0 and len(provided_answers) == 0
+
+    # Step 6: Deterministic Civic Priority Score (0-100) factoring in any follow-up answers
     risk_data = calculate_civic_risk(
         category=dept_rec["category"],
         title=title,
@@ -248,15 +260,8 @@ def analyze_report():
         evidence_score=evidence_quality["quality_score"],
         location_text=address,
         lat=lat_f,
-        lon=lon_f
-    )
-
-    # Step 6: Follow-up Questions (1-2 targeted questions)
-    follow_up_questions = generate_missing_information_questions(
-        category=dept_rec["category"],
-        issue=detected_issue,
-        description=text_input,
-        location_text=address
+        lon=lon_f,
+        follow_up_answers=provided_answers
     )
 
     return jsonify({
@@ -272,13 +277,69 @@ def analyze_report():
             "department": dept_rec,
             "department_recommendation": dept_rec.get("name"),
             "evidence_quality": evidence_quality,
+            "needs_follow_up": needs_follow_up,
+            "follow_up_questions": follow_up_questions,
             "priority_score": risk_data.get("score", 50),
             "priority_level": risk_data.get("level", "MEDIUM"),
             "priority_factors": risk_data.get("factors", {}),
             "civic_risk_score": risk_data,
-            "recommended_sla_hours": risk_data.get("recommended_sla_hours", dept_rec.get("sla_hours", 48)),
-            "follow_up_questions": follow_up_questions
+            "recommended_sla_hours": risk_data.get("recommended_sla_hours", dept_rec.get("sla_hours", 48))
         }
+    }), 200
+
+
+@reports_bp.route("/calculate-priority", methods=["POST"], strict_slashes=False)
+@optional_auth
+def calculate_priority_endpoint():
+    """
+    Recalculates deterministic civic risk score AFTER follow-up questions are answered.
+    Adheres strictly to the 5 canonical weights:
+    - Safety Risk: 30%
+    - Visible Severity: 25%
+    - Public Impact: 20%
+    - Location Context: 15%
+    - Evidence Confidence: 10%
+    """
+    data = request.get_json(silent=True) or {}
+    category = data.get("category") or "Roads & Infrastructure"
+    title = data.get("title") or "Civic Incident"
+    description = data.get("description") or ""
+    evidence_quality = data.get("evidence_quality") or "good"
+    if isinstance(evidence_quality, dict):
+        evidence_label = evidence_quality.get("quality_label", "good")
+        evidence_score = float(evidence_quality.get("quality_score", 0.85))
+    else:
+        evidence_label = str(evidence_quality)
+        evidence_score = float(data.get("evidence_score", 0.85))
+
+    location_text = data.get("address") or data.get("location_text") or ""
+    try:
+        lat = float(data["latitude"]) if data.get("latitude") is not None else None
+        lon = float(data["longitude"]) if data.get("longitude") is not None else None
+    except (ValueError, TypeError):
+        lat, lon = None, None
+
+    answers = data.get("answers") or data.get("missing_information_answers") or []
+
+    risk_data = calculate_civic_risk(
+        category=category,
+        title=title,
+        description=description,
+        evidence_quality=evidence_label,
+        evidence_score=evidence_score,
+        location_text=location_text,
+        lat=lat,
+        lon=lon,
+        follow_up_answers=answers
+    )
+
+    return jsonify({
+        "success": True,
+        "priority_score": risk_data["score"],
+        "priority_level": risk_data["level"],
+        "priority_factors": risk_data["factors"],
+        "civic_risk_score": risk_data,
+        "recommended_sla_hours": risk_data.get("recommended_sla_hours", 48)
     }), 200
 
 
@@ -374,7 +435,8 @@ def create_report():
         has_gps=(lat_f is not None and lon_f is not None)
     )
 
-    # Step 3: Civic Risk Score Calculation
+    # Step 3: Civic Risk Score Calculation (factoring citizen follow-up answers)
+    answers_list = data.get("missing_information_answers") or data.get("answers") or []
     risk_data = calculate_civic_risk(
         category=category,
         title=title,
@@ -383,11 +445,13 @@ def create_report():
         evidence_score=evidence_quality["quality_score"],
         location_text=address,
         lat=lat_f,
-        lon=lon_f
+        lon=lon_f,
+        follow_up_answers=answers_list
     )
 
-    # Step 4: Missing Information Assistant
-    missing_questions = generate_missing_information_questions(
+    # Step 4: Missing Information Assistant Questions
+    client_questions = data.get("missing_information_questions") or data.get("follow_up_questions")
+    missing_questions = client_questions if (client_questions and isinstance(client_questions, list)) else generate_missing_information_questions(
         category=category,
         issue=title,
         description=description,
@@ -398,6 +462,22 @@ def create_report():
     now = datetime.now(timezone.utc).isoformat()
     report_id = str(uuid.uuid4())
     tracking_id = generate_tracking_id()
+
+    initial_timeline = [
+        {
+            "action": "REPORT_SUBMITTED",
+            "actor_role": "CITIZEN",
+            "details": f"Complaint filed via Raabta AI with {evidence_quality['quality_label']} evidence rating.",
+            "timestamp": now
+        }
+    ]
+    if len(answers_list) > 0:
+        initial_timeline.append({
+            "action": "ADDITIONAL_INFORMATION_PROVIDED",
+            "actor_role": "CITIZEN",
+            "details": f"Citizen provided {len(answers_list)} clarifying answer(s) during pre-submission review.",
+            "timestamp": now
+        })
 
     report_doc = {
         "_id": report_id,
@@ -433,17 +513,10 @@ def create_report():
         "civic_risk_score": risk_data,
         "sla_hours": risk_data.get("recommended_sla_hours", 48),
         "missing_information_questions": missing_questions,
-        "missing_information_answers": data.get("missing_information_answers") or [],
+        "missing_information_answers": answers_list,
         "cluster_id": None,
         "is_duplicate": False,
-        "timeline": [
-            {
-                "action": "REPORT_SUBMITTED",
-                "actor_role": "CITIZEN",
-                "details": f"Complaint filed via Raabta AI with {evidence_quality['quality_label']} evidence rating.",
-                "timestamp": now
-            }
-        ],
+        "timeline": initial_timeline,
         "created_at": now,
         "updated_at": now
     }
@@ -709,6 +782,67 @@ def submit_missing_information(report_id):
     return jsonify({
         "success": True,
         "message": "Clarifying information received and appended to civic dossier."
+    }), 200
+
+
+@reports_bp.route("/<report_id>/respond-info", methods=["POST"], strict_slashes=False)
+@optional_auth
+def respond_to_officer_info(report_id):
+    """Citizen provides direct response to an official Government Information Request."""
+    db = get_db()
+    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    if not report:
+        return jsonify({"success": False, "error": "Report not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    response_text = (data.get("response") or data.get("note") or data.get("text") or "").strip()
+    if not response_text:
+        return jsonify({"success": False, "error": "Response text is required."}), 400
+
+    now = datetime.now(timezone.utc).isoformat()
+    current_request = report.get("citizen_info_request") or {}
+    current_request["response"] = response_text
+    current_request["responded_at"] = now
+
+    # Resume previous active status (assigned or in_progress)
+    next_status = "assigned" if report.get("assigned_officer") else "in_progress"
+    if report.get("status") not in ["in_review", "submitted"]:
+        next_status = report.get("status")
+
+    citizen_response_entry = {
+        "response": response_text,
+        "created_at": now,
+        "author": getattr(request, "current_user", {}).get("full_name", "Citizen") if getattr(request, "current_user", None) else "Citizen"
+    }
+
+    db.civic_reports.update_one(
+        {"_id": report.get("_id")},
+        {
+            "$set": {
+                "needs_citizen_response": False,
+                "status": next_status,
+                "citizen_info_request": current_request,
+                "updated_at": now
+            },
+            "$push": {
+                "citizen_responses": citizen_response_entry,
+                "timeline": {
+                    "action": "CITIZEN_PROVIDED_INFO",
+                    "actor_role": "CITIZEN",
+                    "actor_name": getattr(request, "current_user", {}).get("full_name", "Citizen") if getattr(request, "current_user", None) else "Citizen",
+                    "details": f"Citizen responded to inquiry: '{response_text}'",
+                    "timestamp": now
+                }
+            }
+        }
+    )
+
+    updated_report = db.civic_reports.find_one({"_id": report.get("_id")})
+
+    return jsonify({
+        "success": True,
+        "message": "Response successfully sent to the duty officer.",
+        "report": serialize_doc(updated_report)
     }), 200
 
 

@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   FileText, Download, ArrowLeft, MapPin, Calendar, Building,
-  Shield, AlertTriangle, CheckCircle, ExternalLink, RefreshCw, Volume2, Sparkles, Navigation
+  Shield, AlertTriangle, CheckCircle, ExternalLink, RefreshCw, Volume2, Sparkles, Navigation,
+  HelpCircle, MessageSquare, Clock, Send
 } from 'lucide-react'
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
 import * as api from '../services/api'
 import RiskScoreGauge from '../components/RiskScoreGauge'
 import EvidenceQualityBadge from '../components/EvidenceQualityBadge'
-import MissingInfoModal from '../components/MissingInfoModal'
 import ResolutionCard from '../components/ResolutionCard'
 import TimelineView from '../components/TimelineView'
 
@@ -20,6 +20,12 @@ export default function ReportDetailPage() {
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Officer Request-Info Response State
+  const [officerReply, setOfficerReply] = useState('')
+  const [submittingReply, setSubmittingReply] = useState(false)
+  const [replySuccess, setReplySuccess] = useState('')
+  const [replyError, setReplyError] = useState('')
 
   async function loadReport() {
     if (!reportId) return
@@ -42,6 +48,24 @@ export default function ReportDetailPage() {
   useEffect(() => {
     loadReport()
   }, [reportId])
+
+  async function handleOfficerReplySubmit(e) {
+    e.preventDefault()
+    if (!officerReply.trim()) return
+    setSubmittingReply(true)
+    setReplyError('')
+    setReplySuccess('')
+    try {
+      await api.respondToInfoRequest(report.id || report._id, officerReply.trim())
+      setReplySuccess('Your response has been submitted to the duty officer.')
+      setOfficerReply('')
+      await loadReport()
+    } catch (err) {
+      setReplyError(err.message || 'Failed to submit response')
+    } finally {
+      setSubmittingReply(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -290,15 +314,112 @@ export default function ReportDetailPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-6">
-          {/* Missing Information Assistant */}
-          {report.missing_information_questions?.length > 0 &&
-            (!report.missing_information_answers || report.missing_information_answers.length === 0) && (
-              <MissingInfoModal
-                reportId={report.id || report._id}
-                questions={report.missing_information_questions}
-                onAnswered={loadReport}
-              />
+          {/* Officer Request-Info Alert & Citizen Response Form */}
+          {report.needs_citizen_response && report.citizen_info_request && (
+            <div className="p-5 rounded-2xl bg-amber-50/90 border-2 border-amber-300 shadow-sm space-y-3">
+              <div className="flex items-start gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                  <Clock size={18} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-bold text-amber-950">
+                    The assigned officer has requested additional details
+                  </h4>
+                  <p className="text-xs text-amber-900 leading-relaxed bg-white/80 p-3 rounded-xl border border-amber-200">
+                    "{report.citizen_info_request.note}"
+                  </p>
+                  <p className="text-[11px] text-amber-700">
+                    Requested by <strong>{report.citizen_info_request.requested_by || 'Assigned Officer'}</strong>
+                    {report.citizen_info_request.requested_at && ` on ${new Date(report.citizen_info_request.requested_at).toLocaleString()}`}
+                  </p>
+                </div>
+              </div>
+
+              {replySuccess && (
+                <div className="p-3 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold flex items-center gap-1.5">
+                  <CheckCircle size={15} />
+                  <span>{replySuccess}</span>
+                </div>
+              )}
+
+              {replyError && (
+                <div className="p-3 rounded-xl bg-rose-100 border border-rose-300 text-rose-800 text-xs font-semibold flex items-center gap-1.5">
+                  <AlertTriangle size={15} />
+                  <span>{replyError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleOfficerReplySubmit} className="space-y-2 pt-1">
+                <label className="block text-xs font-bold text-amber-950">
+                  Your Response:
+                </label>
+                <textarea
+                  value={officerReply}
+                  onChange={(e) => setOfficerReply(e.target.value)}
+                  placeholder="Provide the specific information, measurements, or context requested by the officer..."
+                  className="w-full text-xs p-3 rounded-xl border border-amber-300 bg-white focus:ring-2 focus:ring-amber-500 focus:outline-none placeholder:text-slate-400"
+                  rows={3}
+                  required
+                />
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={submittingReply || !officerReply.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-colors"
+                  >
+                    <Send size={13} />
+                    <span>{submittingReply ? 'Submitting...' : 'Submit Response'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
+
+          {/* Historical Additional Information Provided */}
+          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 space-y-3 shadow-xs">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <HelpCircle size={16} className="text-emerald-600" />
+              <span>Additional Information</span>
+            </h4>
+            {report.missing_information_answers && report.missing_information_answers.length > 0 ? (
+              <div className="space-y-2.5">
+                <p className="text-xs text-slate-500">
+                  The following clarifications were recorded during submission to refine priority triage:
+                </p>
+                {report.missing_information_answers.map((item, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <p className="text-xs font-semibold text-slate-700">{item.question}</p>
+                    <p className="text-xs font-bold text-emerald-800 pl-2.5 border-l-2 border-emerald-500">
+                      {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                No additional information was required.
+              </p>
+            )}
+
+            {/* Previously submitted responses to officer inquiries */}
+            {report.citizen_responses && report.citizen_responses.length > 0 && (
+              <div className="pt-3 border-t border-slate-100 space-y-2">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Responses Provided to Duty Officer
+                </span>
+                <div className="space-y-2">
+                  {report.citizen_responses.map((cr, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs space-y-1">
+                      <p className="text-slate-800">{cr.response || cr.note || JSON.stringify(cr)}</p>
+                      <span className="text-[10px] text-slate-400 block">
+                        {cr.created_at ? new Date(cr.created_at).toLocaleString() : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Citizen Resolution Verification / Dispute Workflow */}
           <ResolutionCard report={report} onUpdated={loadReport} />

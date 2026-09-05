@@ -205,6 +205,22 @@ export function getReportPdfUrl(reportId) {
   return `${API_BASE}/reports/${reportId}/pdf`
 }
 
+export async function calculatePriority(data) {
+  return requestJson("/reports/calculate-priority", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+}
+
+export async function respondToInfoRequest(reportId, responseText) {
+  return requestJson(`/reports/${reportId}/respond-info`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ response: responseText })
+  })
+}
+
 // =================================
 // DEPARTMENT OPERATIONS APIs
 // =================================

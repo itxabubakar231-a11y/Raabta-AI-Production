@@ -209,9 +209,9 @@ export default function LandingPage() {
                   variants={itemVariants}
                   className="text-3xl sm:text-4xl lg:text-[40px] font-black tracking-tight text-slate-900 leading-[1.18]"
                 >
-                  Intelligent Civic Triage.<br />
+                  Stronger Cities Start with<br />
                   <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 bg-clip-text text-transparent">
-                    Accelerated Municipal Response.
+                    Smarter Citizen Reports
                   </span>
                 </motion.h1>
 
@@ -220,45 +220,44 @@ export default function LandingPage() {
                   variants={itemVariants}
                   className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed max-w-xl"
                 >
-                  Empowering citizens and municipal departments with multimodal AI. Report hazards via Urdu or English voice notes and photos; our platform calculates an explainable <strong>0–100 Civic Risk Score</strong>, merges <strong>250m</strong> duplicate clusters, and dispatches directly to verified authorities.
+                  Raabta AI turns your voice, photos and location into clear civic reports that help the right department take action.
                 </motion.p>
 
                 {/* CTAs with hover micro-animations */}
                 <motion.div variants={itemVariants} className="flex flex-wrap items-center gap-2.5 pt-1">
+                  <Link
+                    to="/app/report"
+                    className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    <span>Report an Issue</span>
+                    <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+
+                  <Link
+                    to="/app/reports"
+                    className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all"
+                  >
+                    <Clock size={14} className="text-emerald-600" />
+                    <span>Track a Complaint</span>
+                  </Link>
+
                   {isAuthenticated ? (
                     <Link
                       to={portalRoute}
-                      className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold text-xs transition-colors"
                     >
-                      <span>Go to Your Portal ({role})</span>
-                      <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
+                      <span>Dashboard ({role})</span>
+                      <ChevronRight size={14} />
                     </Link>
                   ) : (
-                    <>
-                      <Link
-                        to="/signup"
-                        className="group inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                      >
-                        <UserPlus size={15} />
-                        <span>Citizen Access</span>
-                        <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                      </Link>
-                      <Link
-                        to="/login"
-                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-xs sm:text-sm shadow-2xs transition-all"
-                      >
-                        <LogIn size={14} className="text-emerald-600" />
-                        <span>Portal Login</span>
-                      </Link>
-                    </>
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold text-xs transition-colors"
+                    >
+                      <LogIn size={13} className="text-emerald-600" />
+                      <span>Officer Login</span>
+                    </Link>
                   )}
-                  <a
-                    href="#how-it-works"
-                    className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold text-xs transition-colors"
-                  >
-                    <span>Architecture Flow</span>
-                    <ChevronRight size={14} />
-                  </a>
                 </motion.div>
 
                 {/* Compact Integrated Agencies Pill Ribbon */}
@@ -271,19 +270,36 @@ export default function LandingPage() {
                   <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 font-semibold shadow-2xs">🚨 Rescue 1122</span>
                 </motion.div>
 
-                {/* 3 Core Architecture Metrics */}
-                <motion.div variants={itemVariants} className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/80">
-                  <div>
-                    <p className="text-base font-black text-slate-900 tracking-tight">0–100</p>
-                    <p className="text-[10px] text-slate-500 font-medium leading-tight">Explainable Risk SLA</p>
+                {/* 3 Core Value Pillars */}
+                <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-200/80">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs mb-1">
+                      <Sparkles size={14} />
+                      <span>AI-Powered</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium leading-snug">
+                      Smart analysis & category detection
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-base font-black text-emerald-700 tracking-tight">250m</p>
-                    <p className="text-[10px] text-slate-500 font-medium leading-tight">Haversine Merge</p>
+
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs mb-1">
+                      <Mic size={14} />
+                      <span>Evidence-Based</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium leading-snug">
+                      Photo, voice and location
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-base font-black text-slate-900 tracking-tight">Urdu + EN</p>
-                    <p className="text-[10px] text-slate-500 font-medium leading-tight">Multimodal Voice</p>
+
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                    <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-xs mb-1">
+                      <CheckCircle2 size={14} />
+                      <span>Track & Verify</span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium leading-snug">
+                      See progress & confirm resolution
+                    </p>
                   </div>
                 </motion.div>
               </motion.div>
@@ -871,31 +887,35 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+              <Link
+                to="/app/report"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-white text-emerald-900 font-bold text-xs sm:text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+              >
+                <span>Report an Issue</span>
+                <ArrowRight size={15} />
+              </Link>
+              <Link
+                to="/app/reports"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-950 text-white border border-emerald-400/30 font-semibold text-xs sm:text-sm transition-all"
+              >
+                <Clock size={15} />
+                <span>Track a Complaint</span>
+              </Link>
               {isAuthenticated ? (
                 <Link
                   to={portalRoute}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-white text-emerald-900 font-bold text-xs sm:text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-emerald-100 hover:text-white font-semibold text-xs transition-colors"
                 >
-                  <span>Go to Your Portal ({role})</span>
-                  <ArrowRight size={15} />
+                  <span>Portal ({role})</span>
                 </Link>
               ) : (
-                <>
-                  <Link
-                    to="/signup"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl bg-white text-emerald-900 font-bold text-xs sm:text-sm shadow-lg hover:bg-slate-50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                  >
-                    <UserPlus size={15} />
-                    <span>Citizen Access</span>
-                  </Link>
-                  <Link
-                    to="/login"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-950 text-white border border-emerald-400/30 font-semibold text-xs sm:text-sm transition-all"
-                  >
-                    <LogIn size={15} />
-                    <span>Portal Login</span>
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl text-emerald-100 hover:text-white font-semibold text-xs transition-colors"
+                >
+                  <LogIn size={14} />
+                  <span>Officer Login</span>
+                </Link>
               )}
             </div>
           </div>
