@@ -17,6 +17,7 @@ import io
 from database import get_db, serialize_doc
 from auth import token_required, optional_auth, role_required
 from services.risk_engine import calculate_civic_risk
+from services.voice_input import speech_to_text
 from services.cluster_service import process_report_clustering
 from services.ai_service import (
     assess_evidence_quality,
@@ -34,6 +35,251 @@ def generate_tracking_id() -> str:
     year = datetime.now().year
     rand_suffix = uuid.uuid4().hex[:5].upper()
     return f"RA-{year}-{rand_suffix}"
+
+
+def get_department_recommendation(category: str = "", issue: str = "", text: str = "") -> dict:
+    corpus = f"{category} {issue} {text}".lower()
+    if any(k in corpus for k in ["electric", "wire", "spark", "transformer", "pole", "power", "iesco", "current", "shock", "voltage", "bijli"]):
+        dept_info = {
+            "department_id": "IESCO",
+            "department_name": "Islamabad Electric Supply Company (IESCO)",
+            "category": "Electrical Hazards",
+            "sla_hours": 4
+        }
+    elif any(k in corpus for k in ["gas", "leak", "sngpl", "flame", "cylinder", "pipeline", "gas smell", "sui gas"]):
+        dept_info = {
+            "department_id": "SNGPL",
+            "department_name": "Sui Northern Gas Pipelines Limited (SNGPL)",
+            "category": "Gas Leaks & Pipelines",
+            "sla_hours": 6
+        }
+    elif any(k in corpus for k in ["water", "sewage", "gutter", "drain", "manhole", "pipe burst", "wasa", "contamination", "pani"]):
+        dept_info = {
+            "department_id": "WASA",
+            "department_name": "Water and Sanitation Agency (WASA)",
+            "category": "Water & Sanitation",
+            "sla_hours": 24
+        }
+    elif any(k in corpus for k in ["garbage", "trash", "waste", "dumping", "kura", "safai", "mci", "iwmb", "iwmc"]):
+        dept_info = {
+            "department_id": "IWMB",
+            "department_name": "Waste Management & Cleanliness (IWMC)",
+            "category": "Garbage & Waste",
+            "sla_hours": 36
+        }
+    elif any(k in corpus for k in ["traffic", "signal", "chowk", "expressway", "itp", "challan", "warden", "jam"]):
+        dept_info = {
+            "department_id": "ITP",
+            "department_name": "Islamabad Traffic Police (ITP)",
+            "category": "Traffic & Road Safety",
+            "sla_hours": 2
+        }
+    elif any(k in corpus for k in ["fire", "emergency", "1122", "burn", "ambulance", "rescue"]):
+        dept_info = {
+            "department_id": "RESCUE_1122",
+            "department_name": "Rescue 1122 Emergency Services",
+            "category": "Emergency Services",
+            "sla_hours": 1
+        }
+    else:
+        dept_info = {
+            "department_id": "CDA",
+            "department_name": "Capital Development Authority (CDA)",
+            "category": "Roads & Infrastructure",
+            "sla_hours": 48
+        }
+    dept_info["name"] = dept_info["department_name"]
+    return dept_info
+
+
+@reports_bp.route("/analyze", methods=["POST"], strict_slashes=False)
+@optional_auth
+def analyze_report():
+    """
+    Multimodal AI analysis endpoint for pre-submission citizen review.
+    Does NOT save the report to the database.
+    Returns:
+      - title
+      - detected_issue
+      - category
+      - description
+      - transcript (if audio provided)
+      - department recommendation
+      - priority_score (0-100) & risk factors breakdown
+      - evidence_quality (label, score, reason)
+      - follow_up_questions (1-2 targeted questions)
+    """
+    image_bytes = None
+    audio_bytes = None
+    audio_mime = "audio/webm"
+    text_input = ""
+    lat_f = None
+    lon_f = None
+    address = ""
+
+    if request.is_json:
+        data = request.get_json() or {}
+        text_input = (data.get("description") or data.get("text") or "").strip()
+        address = (data.get("address") or data.get("location_text") or "").strip()
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+        if data.get("image_base64"):
+            try:
+                b64_str = data["image_base64"]
+                if "," in b64_str:
+                    b64_str = b64_str.split(",", 1)[1]
+                image_bytes = base64.b64decode(b64_str)
+            except Exception:
+                image_bytes = None
+        if data.get("audio_base64"):
+            try:
+                b64_audio = data["audio_base64"]
+                if "," in b64_audio:
+                    b64_audio = b64_audio.split(",", 1)[1]
+                audio_bytes = base64.b64decode(b64_audio)
+            except Exception:
+                audio_bytes = None
+    else:
+        data = request.form.to_dict()
+        text_input = (data.get("description") or data.get("text") or "").strip()
+        address = (data.get("address") or data.get("location_text") or "").strip()
+        lat = data.get("latitude")
+        lon = data.get("longitude")
+        image_file = request.files.get("image")
+        if image_file:
+            image_bytes = image_file.read()
+        audio_file = request.files.get("audio")
+        if audio_file:
+            audio_bytes = audio_file.read()
+            if audio_file.mimetype:
+                audio_mime = audio_file.mimetype
+
+    try:
+        lat_f = float(lat) if lat is not None and str(lat).strip() else None
+        lon_f = float(lon) if lon is not None and str(lon).strip() else None
+    except (ValueError, TypeError):
+        lat_f = None
+        lon_f = None
+
+    # Step 1: Voice transcription if audio provided
+    transcript = ""
+    if audio_bytes and len(audio_bytes) > 20:
+        try:
+            stt_result = speech_to_text(audio_bytes, mime_type=audio_mime)
+            transcript = stt_result.get("text", "").strip()
+            if not text_input and transcript:
+                text_input = transcript
+        except Exception as e:
+            print(f"[Analyze] Voice STT fallback: {e}")
+            transcript = "Citizen voice recording attached (Urdu / English observation)"
+            if not text_input:
+                text_input = transcript
+
+    # Step 2: Vision or text AI understanding
+    detected_issue = ""
+    detected_severity = "Medium"
+    detected_dept_raw = ""
+
+    if image_bytes and len(image_bytes) > 20:
+        try:
+            raw_detected = detect_issue(image_bytes, latitude=lat_f, longitude=lon_f, address=address)
+            import json
+            parsed = json.loads(raw_detected)
+            detected_issue = parsed.get("issue", "")
+            detected_severity = parsed.get("severity", "Medium")
+            detected_dept_raw = parsed.get("department", "")
+        except Exception as e:
+            print(f"[Analyze] Vision fallback: {e}")
+
+    if not detected_issue and text_input:
+        try:
+            parsed_text = detect_issue_from_text(text_input)
+            detected_issue = parsed_text.get("issue", "")
+            detected_severity = parsed_text.get("severity", "Medium")
+            detected_dept_raw = parsed_text.get("department", "")
+        except Exception as e:
+            print(f"[Analyze] Text AI fallback: {e}")
+
+    # Heuristic issue fallback
+    if not detected_issue:
+        corpus = f"{text_input} {address}".lower()
+        if any(k in corpus for k in ["pothole", "road", "gaddha", "cracked", "asphalt"]):
+            detected_issue = "Road Damage / Pothole"
+        elif any(k in corpus for k in ["wire", "spark", "bijli", "current", "transformer", "pole"]):
+            detected_issue = "Exposed Electrical Cable / Hazard"
+        elif any(k in corpus for k in ["gutter", "drain", "pani", "manhole", "sewage", "nala"]):
+            detected_issue = "Drainage / Gutter Overflow"
+        elif any(k in corpus for k in ["garbage", "trash", "kura", "debris", "waste"]):
+            detected_issue = "Garbage & Waste Accumulation"
+        elif any(k in corpus for k in ["streetlight", "light", "dark", "batti"]):
+            detected_issue = "Broken Streetlight"
+        elif any(k in corpus for k in ["water leak", "pipeline", "pipe", "pani supply"]):
+            detected_issue = "Water Supply Leakage"
+        else:
+            detected_issue = "Civic Problem"
+
+    title = f"{detected_issue} Reported"
+    if address:
+        first_loc = address.split(",")[0].strip()
+        if first_loc:
+            title = f"{detected_issue} — {first_loc}"
+
+    # Step 3: Department Recommendation
+    dept_rec = get_department_recommendation(
+        category=detected_issue,
+        issue=detected_issue,
+        text=f"{text_input} {detected_dept_raw}"
+    )
+
+    # Step 4: Evidence Quality Assessment
+    evidence_quality = assess_evidence_quality(
+        image_bytes=image_bytes,
+        text_length=len(text_input),
+        has_audio=bool(audio_bytes),
+        has_gps=(lat_f is not None and lon_f is not None)
+    )
+
+    # Step 5: Deterministic Civic Priority Score (0-100)
+    risk_data = calculate_civic_risk(
+        category=dept_rec["category"],
+        title=title,
+        description=text_input or f"Observed {detected_issue} requiring inspection.",
+        evidence_quality=evidence_quality["quality_label"],
+        evidence_score=evidence_quality["quality_score"],
+        location_text=address,
+        lat=lat_f,
+        lon=lon_f
+    )
+
+    # Step 6: Follow-up Questions (1-2 targeted questions)
+    follow_up_questions = generate_missing_information_questions(
+        category=dept_rec["category"],
+        issue=detected_issue,
+        description=text_input,
+        location_text=address
+    )
+
+    return jsonify({
+        "success": True,
+        "analysis": {
+            "title": title,
+            "detected_issue": detected_issue,
+            "category": dept_rec["category"],
+            "description": text_input or f"Reported {detected_issue} incident at {address or 'Islamabad'}.",
+            "transcript": transcript,
+            "has_image": bool(image_bytes),
+            "has_audio": bool(audio_bytes),
+            "department": dept_rec,
+            "department_recommendation": dept_rec.get("name"),
+            "evidence_quality": evidence_quality,
+            "priority_score": risk_data.get("score", 50),
+            "priority_level": risk_data.get("level", "MEDIUM"),
+            "priority_factors": risk_data.get("factors", {}),
+            "civic_risk_score": risk_data,
+            "recommended_sla_hours": risk_data.get("recommended_sla_hours", dept_rec.get("sla_hours", 48)),
+            "follow_up_questions": follow_up_questions
+        }
+    }), 200
 
 
 @reports_bp.route("", methods=["POST"], strict_slashes=False)
@@ -250,6 +496,7 @@ def create_report():
 
 
 @reports_bp.route("", methods=["GET"], strict_slashes=False)
+@optional_auth
 def list_reports():
     db = get_db()
     query = {}
@@ -264,7 +511,7 @@ def list_reports():
 
     department_id = request.args.get("department_id") or request.args.get("department")
     if department_id and department_id != "all":
-        query["department_id"] = department_id
+        query["$or"] = [{"department_id": department_id}, {"department_name": department_id}]
 
     min_risk = request.args.get("min_risk")
     if min_risk:
@@ -273,9 +520,29 @@ def list_reports():
         except ValueError:
             pass
 
+    priority = request.args.get("priority")
+    if priority and priority != "all":
+        query["civic_risk_score.level"] = priority.upper()
+
+    area = request.args.get("area") or request.args.get("sector")
+    if area and area != "all":
+        query["location.address"] = {"$regex": area, "$options": "i"}
+
+    repeated = request.args.get("repeated")
+    if repeated in ["true", "repeated"]:
+        query["is_duplicate"] = True
+    elif repeated in ["false", "individual"]:
+        query["is_duplicate"] = {"$ne": True}
+
     search = request.args.get("search")
     if search:
-        query["title"] = {"$regex": search, "$options": "i"}
+        query["$or"] = [
+            {"title": {"$regex": search, "$options": "i"}},
+            {"tracking_id": {"$regex": search, "$options": "i"}},
+            {"location.address": {"$regex": search, "$options": "i"}},
+            {"location.city": {"$regex": search, "$options": "i"}},
+            {"category": {"$regex": search, "$options": "i"}}
+        ]
 
     cluster_id = request.args.get("cluster_id")
     if cluster_id:
@@ -292,16 +559,40 @@ def list_reports():
     skip = (page - 1) * limit
     total_count = db.civic_reports.count_documents(query)
 
-    # Default sort: Highest Civic Risk Score first (Risk-First Queue)
-    reports_cursor = db.civic_reports.find(query).sort("civic_risk_score.score", -1).skip(skip).limit(limit)
-    reports = [serialize_doc(r) for r in reports_cursor]
+    # Sort order
+    sort_by = request.args.get("sort_by", "risk")
+    if sort_by == "created_at_desc":
+        reports_cursor = db.civic_reports.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    elif sort_by == "created_at_asc":
+        reports_cursor = db.civic_reports.find(query).sort("created_at", 1).skip(skip).limit(limit)
+    else:
+        # Risk-First default sort (highest risk score first)
+        reports_cursor = db.civic_reports.find(query).sort("civic_risk_score.score", -1).skip(skip).limit(limit)
+
+    current_user = getattr(request, "current_user", None)
+    is_privileged = current_user and current_user.get("role") in ["officer", "admin"]
+    current_uid = str(current_user.get("id")) if current_user else None
+
+    sanitized_reports = []
+    for r in reports_cursor:
+        doc = serialize_doc(r)
+        # Privacy protection: mask phone and identity details for unprivileged non-owners
+        is_owner = current_uid and str(doc.get("citizen_id")) == current_uid
+        if not is_privileged and not is_owner:
+            phone = doc.get("citizen_phone", "")
+            if phone and len(phone) > 6:
+                doc["citizen_phone"] = phone[:4] + "***" + phone[-3:]
+            elif phone:
+                doc["citizen_phone"] = "***"
+            doc.pop("internal_notes", None)
+        sanitized_reports.append(doc)
 
     return jsonify({
         "success": True,
         "total": total_count,
         "page": page,
         "limit": limit,
-        "reports": reports
+        "reports": sanitized_reports
     }), 200
 
 

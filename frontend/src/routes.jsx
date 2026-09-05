@@ -1,24 +1,38 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
-import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import CitizenLayout from './components/CitizenLayout'
+import GovernmentLayout from './components/GovernmentLayout'
+
+// Public Pages
 import LandingPage from './pages/LandingPage'
-import HomePage from './pages/HomePage'
-import SubmitComplaintPage from './pages/SubmitComplaintPage'
-import TrackComplaintPage from './pages/TrackComplaintPage'
-import ReportDetailPage from './pages/ReportDetailPage'
-import DepartmentPage from './pages/DepartmentPage'
-import InsightsPage from './pages/InsightsPage'
-import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
+
+// Citizen Pages (/app/*)
+import HomePage from './pages/HomePage'
+import CitizenReportWizard from './pages/CitizenReportWizard'
+import TrackComplaintPage from './pages/TrackComplaintPage'
+import ReportDetailPage from './pages/ReportDetailPage'
+import CitizenProblemMapPage from './pages/CitizenProblemMapPage'
 import SettingsPage from './pages/SettingsPage'
 import HowItWorksPage from './pages/HowItWorksPage'
 
+// Government Pages (/gov/*)
+import GovDashboardPage from './pages/gov/GovDashboardPage'
+import GovQueuePage from './pages/gov/GovQueuePage'
+import GovReportDetailPage from './pages/gov/GovReportDetailPage'
+import GovRepeatedProblemsPage from './pages/gov/GovRepeatedProblemsPage'
+import GovProblemMapPage from './pages/gov/GovProblemMapPage'
+import GovInsightsPage from './pages/gov/GovInsightsPage'
+import GovDepartmentsPage from './pages/gov/GovDepartmentsPage'
+import GovUsersPage from './pages/gov/GovUsersPage'
+import GovActivityLogPage from './pages/gov/GovActivityLogPage'
+
 const router = createBrowserRouter([
-  // 1. Public Landing Page (Zero portal access without auth)
+  // 1. Public Landing Page
   {
     path: '/',
     element: <LandingPage />,
@@ -40,12 +54,13 @@ const router = createBrowserRouter([
     path: '/reset-password',
     element: <ResetPasswordPage />,
   },
-  // 3. Application Portal Dashboard (Protected)
+
+  // 3. Citizen Portal (/app/*) — Protected
   {
     path: '/app',
     element: (
       <ProtectedRoute>
-        <Layout />
+        <CitizenLayout />
       </ProtectedRoute>
     ),
     children: [
@@ -54,40 +69,36 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
+        path: 'report',
+        element: <CitizenReportWizard />,
+      },
+      {
         path: 'submit',
-        element: <SubmitComplaintPage />,
+        element: <Navigate to="/app/report" replace />,
+      },
+      {
+        path: 'reports',
+        element: <TrackComplaintPage />,
       },
       {
         path: 'track',
-        element: <TrackComplaintPage />,
+        element: <Navigate to="/app/reports" replace />,
+      },
+      {
+        path: 'reports/:id',
+        element: <ReportDetailPage />,
       },
       {
         path: 'report/:id',
         element: <ReportDetailPage />,
       },
       {
-        path: 'insights',
-        element: <InsightsPage />,
+        path: 'map',
+        element: <CitizenProblemMapPage />,
       },
       {
         path: 'how-it-works',
         element: <HowItWorksPage />,
-      },
-      {
-        path: 'department',
-        element: (
-          <ProtectedRoute allowedRoles={['officer', 'admin']}>
-            <DepartmentPage />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'admin',
-        element: (
-          <ProtectedRoute allowedRoles={['admin']}>
-            <AdminPage />
-          </ProtectedRoute>
-        ),
       },
       {
         path: 'settings',
@@ -95,48 +106,65 @@ const router = createBrowserRouter([
       },
     ],
   },
-  // 4. Direct Portal Routes for Seamless Deep-linking (Protected & Role-Guarded)
+
+  // 4. Government Portal (/gov/*) — Protected & Role Guarded (officer, admin)
   {
-    path: '/',
+    path: '/gov',
     element: (
-      <ProtectedRoute>
-        <Layout />
+      <ProtectedRoute allowedRoles={['officer', 'admin']}>
+        <GovernmentLayout />
       </ProtectedRoute>
     ),
     children: [
       {
-        path: 'submit',
-        element: <SubmitComplaintPage />,
+        index: true,
+        element: <GovDashboardPage />,
       },
       {
-        path: 'track',
-        element: <TrackComplaintPage />,
+        path: 'queue',
+        element: <GovQueuePage />,
       },
       {
-        path: 'report/:id',
-        element: <ReportDetailPage />,
+        path: 'reports',
+        element: <GovQueuePage />,
+      },
+      {
+        path: 'reports/:id',
+        element: <GovReportDetailPage />,
+      },
+      {
+        path: 'repeated',
+        element: <GovRepeatedProblemsPage />,
+      },
+      {
+        path: 'map',
+        element: <GovProblemMapPage />,
       },
       {
         path: 'insights',
-        element: <InsightsPage />,
+        element: <GovInsightsPage />,
       },
       {
-        path: 'how-it-works',
-        element: <HowItWorksPage />,
+        path: 'response-times',
+        element: <GovInsightsPage />,
       },
       {
-        path: 'department',
+        path: 'departments',
+        element: <GovDepartmentsPage />,
+      },
+      {
+        path: 'users',
         element: (
-          <ProtectedRoute allowedRoles={['officer', 'admin']}>
-            <DepartmentPage />
+          <ProtectedRoute allowedRoles={['admin']}>
+            <GovUsersPage />
           </ProtectedRoute>
         ),
       },
       {
-        path: 'admin',
+        path: 'activity',
         element: (
           <ProtectedRoute allowedRoles={['admin']}>
-            <AdminPage />
+            <GovActivityLogPage />
           </ProtectedRoute>
         ),
       },
@@ -146,11 +174,38 @@ const router = createBrowserRouter([
       },
     ],
   },
-  // 5. Wildcard Fallback
+
+  // 5. Legacy Route Redirects (for deep links and bookmarks)
+  {
+    path: '/submit',
+    element: <Navigate to="/app/report" replace />,
+  },
+  {
+    path: '/track',
+    element: <Navigate to="/app/reports" replace />,
+  },
+  {
+    path: '/report/:id',
+    element: <ReportDetailPage />,
+  },
+  {
+    path: '/department',
+    element: <Navigate to="/gov/queue" replace />,
+  },
+  {
+    path: '/admin',
+    element: <Navigate to="/gov/users" replace />,
+  },
+  {
+    path: '/insights',
+    element: <Navigate to="/gov/insights" replace />,
+  },
+
+  // 6. Wildcard Fallback
   {
     path: '*',
     element: <Navigate to="/" replace />,
-  }
+  },
 ])
 
 export default router

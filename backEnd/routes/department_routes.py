@@ -344,3 +344,159 @@ def add_internal_note(report_id):
         "message": "Internal collaboration note saved.",
         "note": serialize_doc(doc)
     }), 201
+
+
+@department_bp.route("/reports/<report_id>/notes", methods=["GET"], strict_slashes=False)
+@token_required
+@role_required("officer", "admin")
+def get_internal_notes(report_id):
+    db = get_db()
+    notes = list(db.internal_notes.find({"report_id": str(report_id)}).sort("created_at", -1))
+    return jsonify({
+        "success": True,
+        "count": len(notes),
+        "notes": serialize_doc(notes)
+    }), 200
+
+
+
+@department_bp.route("/reports/<report_id>/override", methods=["POST"], strict_slashes=False)
+@token_required
+@role_required("officer", "admin")
+def override_report(report_id):
+    """
+    Allows officer/admin to override AI recommendations with a mandatory reason.
+    Records OFFICER_OVERRIDE in timeline and audit log.
+    """
+    db = get_db()
+    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    if not report:
+        return jsonify({"success": False, "error": "Report not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip()
+    if not reason:
+        return jsonify({"success": False, "error": "A clear mandatory reason is required to override AI recommendation."}), 400
+
+    new_dept = data.get("department_id") or data.get("department")
+    new_severity = data.get("severity")
+    new_priority = data.get("priority") or data.get("risk_score")
+
+    now = datetime.now(timezone.utc).isoformat()
+    actor_name = request.current_user.get("full_name", "Officer")
+    actor_id = request.current_user.get("id")
+
+    update_fields = {"updated_at": now}
+    override_details = {"actor_id": actor_id, "actor_name": actor_name, "reason": reason, "timestamp": now}
+
+    if new_dept:
+        update_fields["department_id"] = new_dept
+        update_fields["department_name"] = new_dept
+        override_details["new_department"] = new_dept
+    if new_severity:
+        update_fields["severity"] = new_severity
+        override_details["new_severity"] = new_severity
+    if new_priority is not None:
+        try:
+            p_val = int(new_priority)
+            p_level = "CRITICAL" if p_val >= 75 else "HIGH" if p_val >= 50 else "MEDIUM" if p_val >= 25 else "LOW"
+            update_fields["civic_risk_score.score"] = p_val
+            update_fields["civic_risk_score.level"] = p_level
+            override_details["new_priority"] = p_val
+        except (ValueError, TypeError):
+            pass
+
+    db.civic_reports.update_one(
+        {"_id": report.get("_id")},
+        {
+            "$set": update_fields,
+            "$push": {
+                "timeline": {
+                    "action": "OFFICER_OVERRIDE",
+                    "actor_role": request.current_user.get("role", "officer").upper(),
+                    "actor_name": actor_name,
+                    "details": f"Officer override: {reason}. {', '.join(f'{k}: {v}' for k, v in override_details.items() if k not in ['actor_id', 'actor_name', 'timestamp', 'reason'])}",
+                    "timestamp": now
+                }
+            }
+        }
+    )
+
+    db.audit_logs.insert_one({
+        "_id": str(uuid.uuid4()),
+        "actor_id": actor_id,
+        "actor_role": request.current_user.get("role", "officer").upper(),
+        "action": "OFFICER_OVERRIDE",
+        "report_id": str(report.get("_id")),
+        "details": override_details,
+        "timestamp": now
+    })
+
+    return jsonify({
+        "success": True,
+        "message": "AI recommendation override recorded successfully."
+    }), 200
+
+
+@department_bp.route("/reports/<report_id>/request-info", methods=["POST"], strict_slashes=False)
+@token_required
+@role_required("officer", "admin")
+def request_more_info(report_id):
+    """
+    Officer requests additional information/clarification from the citizen.
+    """
+    db = get_db()
+    report = db.civic_reports.find_one({"_id": report_id}) or db.civic_reports.find_one({"id": report_id}) or db.civic_reports.find_one({"tracking_id": report_id})
+    if not report:
+        return jsonify({"success": False, "error": "Report not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    note = (data.get("note") or data.get("question") or "").strip()
+    if not note:
+        return jsonify({"success": False, "error": "Information request note is required."}), 400
+
+    now = datetime.now(timezone.utc).isoformat()
+    actor_name = request.current_user.get("full_name", "Duty Officer")
+
+    db.civic_reports.update_one(
+        {"_id": report.get("_id")},
+        {
+            "$set": {
+                "status": "in_review",
+                "needs_citizen_response": True,
+                "citizen_info_request": {
+                    "requested_by": actor_name,
+                    "note": note,
+                    "requested_at": now
+                },
+                "updated_at": now
+            },
+            "$push": {
+                "timeline": {
+                    "action": "INFORMATION_REQUESTED",
+                    "actor_role": "OFFICER",
+                    "actor_name": actor_name,
+                    "details": f"Officer requested more information: {note}",
+                    "timestamp": now
+                }
+            }
+        }
+    )
+
+    if report.get("citizen_id"):
+        db.notifications.insert_one({
+            "_id": str(uuid.uuid4()),
+            "user_id": report["citizen_id"],
+            "title": f"Information Needed: {report.get('tracking_id')}",
+            "message": f"The department needs more information about your report: '{note}'",
+            "type": "info_requested",
+            "report_id": str(report.get("_id")),
+            "is_read": False,
+            "created_at": now
+        })
+
+    return jsonify({
+        "success": True,
+        "message": "Information request sent to citizen."
+    }), 200
+

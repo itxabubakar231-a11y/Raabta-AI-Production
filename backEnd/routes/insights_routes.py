@@ -77,10 +77,12 @@ def get_civic_hotspots():
     }), 200
 
 
+from datetime import datetime, timezone
+
 @insights_bp.route("/trends", methods=["GET"], strict_slashes=False)
 @insights_bp.route("/summary", methods=["GET"], strict_slashes=False)
 def get_civic_trends():
-    """Returns aggregated platform metrics, category distributions, and SLA metrics."""
+    """Returns real aggregated platform metrics, category distributions, and SLA metrics."""
     db = get_db()
     reports = list(db.civic_reports.find({}))
     total_count = len(reports)
@@ -88,11 +90,15 @@ def get_civic_trends():
     # Status tallies
     status_counts = {"submitted": 0, "in_review": 0, "assigned": 0, "in_progress": 0, "resolved": 0, "disputed": 0, "closed": 0}
     category_counts = {}
+    area_counts = {}
+    department_workload = {}
     risk_levels = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
     total_risk = 0
 
     disputed_count = 0
     closed_count = 0
+    resolution_hours_list = []
+    sla_compliant_count = 0
 
     for r in reports:
         st = r.get("status", "submitted")
@@ -103,6 +109,15 @@ def get_civic_trends():
 
         cat = r.get("category", "Other")
         category_counts[cat] = category_counts.get(cat, 0) + 1
+
+        dept = r.get("department_name") or r.get("department_id") or "Unassigned"
+        department_workload[dept] = department_workload.get(dept, 0) + 1
+
+        loc = r.get("location") or {}
+        addr = loc.get("address") or loc.get("city") or "ICT Region"
+        area_key = addr.split(",")[0].strip() if "," in addr else addr.strip()
+        if area_key:
+            area_counts[area_key] = area_counts.get(area_key, 0) + 1
 
         score_info = r.get("civic_risk_score") or {}
         score = score_info.get("score", 50)
@@ -122,16 +137,40 @@ def get_civic_trends():
         elif st == "closed":
             closed_count += 1
 
+        # Real response time calculation between created_at and resolved_at
+        created_str = r.get("created_at")
+        resolved_str = (r.get("resolution") or {}).get("resolved_at") or (r.get("updated_at") if st in ["resolved", "closed"] else None)
+        if st in ["resolved", "closed"] and created_str and resolved_str:
+            try:
+                t1 = datetime.fromisoformat(str(created_str).replace("Z", "+00:00"))
+                t2 = datetime.fromisoformat(str(resolved_str).replace("Z", "+00:00"))
+                diff_hours = (t2 - t1).total_seconds() / 3600.0
+                if diff_hours >= 0:
+                    resolution_hours_list.append(diff_hours)
+                    sla_h = r.get("sla_hours") or score_info.get("recommended_sla_hours", 48)
+                    if diff_hours <= sla_h:
+                        sla_compliant_count += 1
+            except Exception:
+                pass
+
     avg_risk = round(total_risk / total_count, 1) if total_count > 0 else 0
     resolved_total = status_counts.get("resolved", 0) + status_counts.get("closed", 0)
 
-    # Verification satisfaction rate: closed / (closed + disputed)
+    # Real verification satisfaction rate: closed / (closed + disputed)
     verified_total = closed_count + disputed_count
-    citizen_satisfaction = round((closed_count / verified_total * 100), 1) if verified_total > 0 else 94.2
+    citizen_satisfaction = round((closed_count / verified_total * 100), 1) if verified_total > 0 else None
+
+    # Real average resolution hours and SLA compliance
+    avg_resolution_hours = round(sum(resolution_hours_list) / len(resolution_hours_list), 1) if resolution_hours_list else None
+    sla_compliance_rate = round((sla_compliant_count / len(resolution_hours_list) * 100), 1) if resolution_hours_list else None
 
     # Cluster reduction metric (duplicates saved)
     cluster_count = db.issue_clusters.count_documents({})
     duplicate_reports_merged = sum(1 for r in reports if r.get("is_duplicate"))
+
+    # Top areas sorted
+    sorted_areas = sorted(area_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    top_areas = [{"area": a[0], "count": a[1]} for a in sorted_areas]
 
     return jsonify({
         "success": True,
@@ -141,14 +180,17 @@ def get_civic_trends():
             "resolved_count": resolved_total,
             "critical_count": risk_levels["CRITICAL"],
             "disputed_count": disputed_count,
+            "verified_confirmed_count": closed_count,
             "average_risk_score": avg_risk,
             "clusters_formed": cluster_count,
             "duplicate_reports_merged": duplicate_reports_merged,
             "citizen_satisfaction_rate": citizen_satisfaction,
-            "avg_resolution_hours": 18.4,
-            "sla_compliance_rate": 92.6
+            "avg_resolution_hours": avg_resolution_hours,
+            "sla_compliance_rate": sla_compliance_rate
         },
         "status_distribution": status_counts,
         "category_breakdown": category_counts,
-        "risk_distribution": risk_levels
+        "department_workload": department_workload,
+        "risk_distribution": risk_levels,
+        "top_areas": top_areas
     }), 200

@@ -150,7 +150,7 @@ def calculate_civic_risk(
         recommended_sla_hours = 96
         primary_driver = "Cosmetic or minor community issue"
 
-    return {
+    res = {
         "score": total_score,
         "level": risk_level,
         "recommended_sla_hours": recommended_sla_hours,
@@ -188,3 +188,5 @@ def calculate_civic_risk(
             }
         }
     }
+    res["breakdown"] = res["factors"]
+    return res

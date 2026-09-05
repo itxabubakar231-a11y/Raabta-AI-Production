@@ -35,21 +35,19 @@ export default function LoginPage() {
     try {
       const user = await login(trimmedEmail, password)
 
-      // Role-aware destination routing
+      // Role-aware destination routing (/app for citizens, /gov for officer/admin)
+      const isGovRole = user.role === 'officer' || user.role === 'admin'
       const canAccessFrom = from && (
-        (from.startsWith('/admin') && user.role === 'admin') ||
-        (from.startsWith('/department') && (user.role === 'officer' || user.role === 'admin')) ||
-        (!from.startsWith('/admin') && !from.startsWith('/department'))
+        (from.startsWith('/gov') && isGovRole) ||
+        (from.startsWith('/app') && !isGovRole)
       )
 
       if (canAccessFrom) {
         navigate(from, { replace: true })
-      } else if (user.role === 'admin') {
-        navigate('/admin', { replace: true })
-      } else if (user.role === 'officer') {
-        navigate('/department', { replace: true })
+      } else if (isGovRole) {
+        navigate('/gov', { replace: true })
       } else {
-        navigate('/track', { replace: true })
+        navigate('/app', { replace: true })
       }
     } catch (err) {
       // Neutral, friendly error without leaking whether the account exists

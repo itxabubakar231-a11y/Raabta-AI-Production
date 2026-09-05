@@ -112,8 +112,8 @@ export default function ResolutionCard({ report, onUpdated }) {
       {/* Citizen Verification Decision Controls */}
       {isResolved && (
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
-          <p className="text-xs text-slate-700 font-medium leading-relaxed">
-            Duty Officer has submitted the completion proof above. Please inspect the site and confirm closure or submit a dispute.
+          <p className="text-xs text-slate-800 font-medium leading-relaxed">
+            Your problem has been marked as fixed. Please check the location and confirm.
           </p>
 
           {!mode && (
@@ -121,18 +121,18 @@ export default function ResolutionCard({ report, onUpdated }) {
               <button
                 type="button"
                 onClick={() => setMode('accept')}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
                 <CheckCircle size={15} />
-                <span>Approve & Close</span>
+                <span>Yes, It's Fixed</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMode('dispute')}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-red-200 transition-colors"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 border border-rose-200 transition-colors"
               >
                 <AlertTriangle size={15} />
-                <span>Dispute Resolution</span>
+                <span>No, It's Still There</span>
               </button>
             </div>
           )}

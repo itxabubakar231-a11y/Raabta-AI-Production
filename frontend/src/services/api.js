@@ -151,6 +151,27 @@ export async function getReportById(reportId) {
   return requestJson(`/reports/${reportId}`, { method: "GET" })
 }
 
+export async function analyzeCivicReport(data) {
+  if (data.image instanceof File || data.audio instanceof Blob || data.audio instanceof File) {
+    const formData = new FormData()
+    if (data.image) formData.append("image", data.image)
+    if (data.audio) formData.append("audio", data.audio)
+    if (data.text || data.description) formData.append("description", data.text || data.description)
+    if (data.latitude) formData.append("latitude", data.latitude)
+    if (data.longitude) formData.append("longitude", data.longitude)
+    if (data.address) formData.append("address", data.address)
+    return requestJson("/reports/analyze", {
+      method: "POST",
+      body: formData
+    })
+  }
+  return requestJson("/reports/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  })
+}
+
 export async function createCivicReport(reportData) {
   return requestJson("/reports", {
     method: "POST",
@@ -221,6 +242,22 @@ export async function resolveReportWithProof(reportId, { resolution_notes, resol
   })
 }
 
+export async function overrideReport(reportId, { department_id, severity, priority, reason }) {
+  return requestJson(`/departments/reports/${reportId}/override`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ department_id, severity, priority, reason })
+  })
+}
+
+export async function requestMoreInfo(reportId, { note }) {
+  return requestJson(`/departments/reports/${reportId}/request-info`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note })
+  })
+}
+
 export async function addInternalNote(reportId, { note, is_private = true }) {
   return requestJson(`/departments/reports/${reportId}/notes`, {
     method: "POST",
@@ -228,6 +265,11 @@ export async function addInternalNote(reportId, { note, is_private = true }) {
     body: JSON.stringify({ note, is_private })
   })
 }
+
+export async function getInternalNotes(reportId) {
+  return requestJson(`/departments/reports/${reportId}/notes`, { method: "GET" })
+}
+
 
 // =================================
 // CLUSTERS APIs
