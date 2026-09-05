@@ -67,7 +67,7 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+        className="relative p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200/80 shadow-2xs transition-colors"
         aria-label="Notifications"
       >
         <Bell size={18} />
@@ -79,12 +79,12 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl border border-slate-700 bg-slate-900 shadow-2xl z-50 overflow-hidden">
-          <div className="flex items-center justify-between p-3.5 border-b border-slate-800 bg-slate-950/60">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden">
+          <div className="flex items-center justify-between p-3.5 border-b border-slate-100 bg-slate-50/80">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white">Notifications</span>
+              <span className="font-bold text-sm text-slate-900">Notifications</span>
               {unreadCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
                   {unreadCount} new
                 </span>
               )}
@@ -93,14 +93,14 @@ export default function NotificationBell() {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-[11px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors"
               >
                 Mark all read
               </button>
             )}
           </div>
 
-          <div className="max-h-80 overflow-y-auto divide-y divide-slate-800/60">
+          <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
             {notifications.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
                 No notifications right now.
@@ -111,22 +111,22 @@ export default function NotificationBell() {
                 return (
                   <div
                     key={n.id || n._id}
-                    className={`p-3 text-xs transition-colors hover:bg-slate-800/40 ${isUnread ? 'bg-slate-800/25' : ''}`}
+                    className={`p-3 text-xs transition-colors hover:bg-slate-50/80 ${isUnread ? 'bg-emerald-50/30' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5">
-                          {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
-                          <h5 className="font-semibold text-white">{n.title}</h5>
+                          {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                          <h5 className="font-bold text-slate-900">{n.title}</h5>
                         </div>
-                        <p className="text-slate-300 mt-1 leading-relaxed text-[11px]">{n.message}</p>
+                        <p className="text-slate-600 mt-1 leading-relaxed text-[11px] font-medium">{n.message}</p>
                         <div className="flex items-center justify-between mt-2 text-[10px] text-slate-400">
                           <span>{n.created_at ? new Date(n.created_at).toLocaleDateString() : ''}</span>
                           {n.report_id && (
                             <Link
                               to={`/track?tracking_id=${n.report_id}`}
                               onClick={() => setOpen(false)}
-                              className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
+                              className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-bold"
                             >
                               <span>View Incident</span>
                               <ExternalLink size={10} />
@@ -139,7 +139,7 @@ export default function NotificationBell() {
                         <button
                           type="button"
                           onClick={(e) => handleMarkRead(n.id || n._id, e)}
-                          className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+                          className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100"
                           title="Mark read"
                         >
                           <Check size={12} />

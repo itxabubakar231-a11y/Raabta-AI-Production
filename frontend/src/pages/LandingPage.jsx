@@ -837,26 +837,26 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* 10. FOOTER (Dark Navy Contrast) */}
-      <footer className="border-t border-slate-800 bg-[#070a12] py-12 text-xs text-slate-400">
+      {/* 10. FOOTER */}
+      <footer className="border-t border-slate-200/90 bg-white py-12 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <Logo size="sm" to="/" theme="dark" />
-            <span className="hidden sm:inline text-slate-600">|</span>
-            <p className="text-slate-400 text-center sm:text-left">
+            <Logo size="sm" to="/" theme="light" />
+            <span className="hidden sm:inline text-slate-300">|</span>
+            <p className="text-slate-500 text-center sm:text-left">
               Civic Intelligence & Municipal Hazard Platform for Pakistan
             </p>
           </div>
 
-          <div className="flex items-center gap-6 text-slate-300 font-medium">
-            <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
-            <a href="#capabilities" className="hover:text-white transition-colors">Capabilities</a>
-            <Link to="/login" className="hover:text-white transition-colors">Portal Login</Link>
-            <Link to="/signup" className="hover:text-white transition-colors">Citizen Access</Link>
+          <div className="flex items-center gap-6 text-slate-600 font-medium">
+            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">How It Works</a>
+            <a href="#capabilities" className="hover:text-slate-900 transition-colors">Capabilities</a>
+            <Link to="/login" className="hover:text-slate-900 transition-colors">Portal Login</Link>
+            <Link to="/signup" className="hover:text-slate-900 transition-colors">Citizen Access</Link>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-500 text-[11px]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-400 text-[11px]">
           <p>© {new Date().getFullYear()} Raabta AI. All rights reserved.</p>
           <p>Government of Pakistan Civic Dispatch & Municipal Triage Layer.</p>
         </div>

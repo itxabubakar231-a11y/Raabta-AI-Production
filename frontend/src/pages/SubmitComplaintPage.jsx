@@ -706,11 +706,11 @@ function SubmitComplaintPage() {
         {/* Switch Segment Card */}
         <section className="glass-panel space-y-4">
           <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles size={18} className="text-emerald-400" />
+            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles size={18} className="text-emerald-600" />
               <span>Grievance Studio</span>
             </h3>
-            <p className="text-xs text-slate-400 mt-0.5">Select a dispatch channel to record details.</p>
+            <p className="text-xs text-slate-500 mt-0.5">Select a dispatch channel to record details.</p>
           </div>
 
           <div className="mode-segmented-switch">
@@ -736,7 +736,7 @@ function SubmitComplaintPage() {
 
         {/* INPUT MODE SUBSECTION */}
         <section className="glass-panel space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Reporter Interface</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Reporter Interface</h3>
 
           {/* 1. IMAGE PORTAL */}
           {inputMode === "image" && (
@@ -761,9 +761,9 @@ function SubmitComplaintPage() {
                     <img
                       src={capturedImagePreview}
                       alt="Civic damage report preview"
-                      className="w-full max-h-[220px] object-cover rounded-xl border border-slate-800"
+                      className="w-full max-h-[220px] object-cover rounded-xl border border-slate-200"
                     />
-                    <div className="absolute inset-0 bg-slate-950/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                    <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -778,11 +778,11 @@ function SubmitComplaintPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <div className="mx-auto h-12 w-12 rounded-full bg-[#006c35]/10 border border-[#006c35]/30 flex items-center justify-center text-emerald-400">
+                    <div className="mx-auto h-12 w-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                       <Camera size={22} />
                     </div>
-                    <p className="text-sm font-semibold text-slate-200">Drag & Drop Image here</p>
-                    <p className="text-xs text-slate-400">or click to browse filesystem</p>
+                    <p className="text-sm font-semibold text-slate-800">Drag & Drop Image here</p>
+                    <p className="text-xs text-slate-500">or click to browse filesystem</p>
                   </div>
                 )}
               </div>
@@ -791,7 +791,7 @@ function SubmitComplaintPage() {
                 <button
                   type="button"
                   onClick={isCameraActive ? closeCamera : openCamera}
-                  className={`btn-secondary flex-1 py-2.5 text-sm ${isCameraActive ? 'border-red-500/30 text-red-400 bg-red-500/5' : ''}`}
+                  className={`btn-secondary flex-1 py-2.5 text-sm ${isCameraActive ? 'border-rose-300 text-rose-600 bg-rose-50' : ''}`}
                 >
                   {isCameraActive ? "Close Camera" : "Open System Camera"}
                 </button>
@@ -820,7 +820,7 @@ function SubmitComplaintPage() {
               </div>
 
               {isCameraActive && (
-                <div className="map-glow-container relative h-48 bg-black">
+                <div className="map-glow-container relative h-48 bg-black rounded-2xl overflow-hidden">
                   <video
                     ref={(el) => {
                       videoRef.current = el
@@ -841,14 +841,14 @@ function SubmitComplaintPage() {
           {/* 2. VOICE PORTAL */}
           {inputMode === "voice" && (
             <div className="space-y-4">
-              <div className="p-6 rounded-2xl bg-slate-950/40 border border-slate-900 flex flex-col items-center gap-4 text-center">
-                <div className={`recording-mic-indicator ${isRecording ? 'active' : ''}`} style={{ color: 'var(--color-primary-hover)', borderColor: 'var(--color-primary-hover)', backgroundColor: 'rgba(0, 108, 53, 0.08)' }}>
+              <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center gap-4 text-center">
+                <div className={`recording-mic-indicator ${isRecording ? 'active' : ''}`} style={{ color: 'var(--color-primary-hover)', borderColor: 'var(--color-primary-hover)', backgroundColor: 'rgba(5, 150, 105, 0.08)' }}>
                   <Mic size={24} />
                 </div>
                 
                 <div>
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Voice Dispatch Rec</span>
-                  <span className="text-lg font-bold text-slate-100 mt-1 block">
+                  <span className="text-lg font-bold text-slate-900 mt-1 block">
                     {isRecording ? "Transmitting Audio Note..." : recordedAudioPreview ? "Note Compiled" : "Press Start to record in English/Urdu"}
                   </span>
                 </div>
@@ -857,7 +857,7 @@ function SubmitComplaintPage() {
                   <button
                     type="button"
                     onClick={isRecording ? stopRecording : startRecording}
-                    className={`btn-primary px-6 py-2.5 ${isRecording ? 'bg-red-600 hover:bg-red-700 shadow-red-500/20' : ''}`}
+                    className={`btn-primary px-6 py-2.5 ${isRecording ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' : ''}`}
                   >
                     {isRecording ? "Stop Recording" : "Start Recording"}
                   </button>
@@ -878,21 +878,21 @@ function SubmitComplaintPage() {
                 </div>
 
                 {(isRecording || recordingStatus === "stopped") && (
-                  <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-900 pt-4 mt-2">
+                  <div className="w-full grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 mt-2">
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">Note Duration</span>
-                      <span className="text-sm font-mono font-bold text-slate-200">{formatTime(recordingDuration)}</span>
+                      <span className="text-sm font-mono font-bold text-slate-800">{formatTime(recordingDuration)}</span>
                     </div>
                     <div>
                       <span className="text-[10px] uppercase font-bold text-slate-500 block">Record Status</span>
-                      <span className="text-sm font-bold text-slate-200">{isRecording ? "🔴 RECORDING" : "✅ ENCODED"}</span>
+                      <span className="text-sm font-bold text-slate-800">{isRecording ? "🔴 RECORDING" : "✅ ENCODED"}</span>
                     </div>
                   </div>
                 )}
               </div>
 
               {recordedAudioPreview && (
-                <div className="space-y-1.5 p-3 rounded-xl bg-slate-900/30 border border-slate-800">
+                <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Playback Audio Note</label>
                   <audio
                     controls
@@ -912,10 +912,10 @@ function SubmitComplaintPage() {
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
                   placeholder="Describe the civic grievance (e.g. Garbage piling on main street, water board leakage, road pothole)..."
-                  className="w-full h-36 p-4 rounded-xl border border-slate-800 bg-slate-950/50 text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none text-sm leading-relaxed"
+                  className="w-full h-36 p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 outline-none transition-all resize-none text-sm leading-relaxed"
                   maxLength={1000}
                 />
-                <span className="absolute bottom-3 right-3 text-[10px] font-semibold text-slate-500 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
+                <span className="absolute bottom-3 right-3 text-[10px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                   {textInput.length}/1000
                 </span>
               </div>
@@ -926,15 +926,15 @@ function SubmitComplaintPage() {
         {/* MAP SECTION (LOCATION CARD) */}
         <section className="glass-panel space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <MapPin size={14} className="text-emerald-400" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <MapPin size={14} className="text-emerald-600" />
               <span>Location Card</span>
             </h3>
             <button
               type="button"
               onClick={detectLocation}
               disabled={isFetchingLocation}
-              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 disabled:text-slate-600 transition flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 disabled:text-slate-400 transition flex items-center gap-1 cursor-pointer"
             >
               {isFetchingLocation ? "📍 Locating..." : "📍 Detect Location"}
             </button>
@@ -942,7 +942,7 @@ function SubmitComplaintPage() {
 
           <div className="grid gap-3">
             {latitude && longitude && (
-              <div className="map-glow-container h-44 relative z-10">
+              <div className="map-glow-container h-44 relative z-10 rounded-2xl overflow-hidden border border-slate-200">
                 <MapContainer
                   center={[latitude, longitude]}
                   zoom={15}
@@ -961,52 +961,52 @@ function SubmitComplaintPage() {
               </div>
             )}
 
-            <div className="rounded-xl border border-slate-900 bg-slate-950/30 p-4 space-y-2.5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <MapPin size={13} className="text-emerald-500" />
+                  <MapPin size={13} className="text-emerald-600" />
                   <span>Street</span>
                 </span>
                 <span className="location-item-value" title={addrDetails.street}>{addrDetails.street}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Compass size={13} className="text-emerald-500" />
+                  <Compass size={13} className="text-emerald-600" />
                   <span>Area</span>
                 </span>
                 <span className="location-item-value">{addrDetails.area}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Building size={13} className="text-emerald-500" />
+                  <Building size={13} className="text-emerald-600" />
                   <span>City</span>
                 </span>
                 <span className="location-item-value">{addrDetails.city}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Landmark size={13} className="text-emerald-500" />
+                  <Landmark size={13} className="text-emerald-600" />
                   <span>District</span>
                 </span>
                 <span className="location-item-value">{addrDetails.district}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Map size={13} className="text-emerald-500" />
+                  <Map size={13} className="text-emerald-600" />
                   <span>Province</span>
                 </span>
                 <span className="location-item-value">{addrDetails.province}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Hash size={13} className="text-emerald-500" />
+                  <Hash size={13} className="text-emerald-600" />
                   <span>Postal Code</span>
                 </span>
                 <span className="location-item-value">{addrDetails.postalCode}</span>
               </div>
               <div className="location-item-row">
                 <span className="location-item-label flex items-center gap-2">
-                  <Flag size={13} className="text-emerald-500" />
+                  <Flag size={13} className="text-emerald-600" />
                   <span>Country</span>
                 </span>
                 <span className="location-item-value">🇵🇰 Pakistan</span>
@@ -1016,8 +1016,8 @@ function SubmitComplaintPage() {
         </section>
 
         {error && (
-          <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-3 text-rose-400 font-semibold text-xs flex items-center gap-2">
-            <AlertTriangle size={14} className="flex-shrink-0" />
+          <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-rose-700 font-semibold text-xs flex items-center gap-2">
+            <AlertTriangle size={14} className="flex-shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
@@ -1045,7 +1045,7 @@ function SubmitComplaintPage() {
         {/* LOADING TIMELINE PROCESS */}
         {isProcessing && (
           <section className="glass-panel">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-900 pb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 pb-3">
               Dispatch Verification Pipeline
             </h3>
             
@@ -1072,15 +1072,15 @@ function SubmitComplaintPage() {
       </div>
 
       {/* RIGHT COLUMN: AI RESPONSE WORKSPACE */}
-      <aside className="glass-panel bg-slate-950/20 flex flex-col h-full min-h-[600px] gap-6">
-        <div className="border-b border-slate-900 pb-3 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Brain size={18} className="text-emerald-400" />
+      <aside className="glass-panel flex flex-col h-full min-h-[600px] gap-6">
+        <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Brain size={18} className="text-emerald-600" />
             <span>AI Dispatch Workspace</span>
           </h3>
           {result && (
-            <span className="badge badge-green flex items-center gap-1 bg-[#006c35]/15 border-[#006c35]/30 text-emerald-400">
-              <CheckCircle size={10} />
+            <span className="badge flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">
+              <CheckCircle size={12} className="text-emerald-600" />
               Dossier Compiled
             </span>
           )}
@@ -1088,37 +1088,37 @@ function SubmitComplaintPage() {
 
         {/* SUCCESS PORTAL EXPERIENCES */}
         {result && (
-          <div className="rounded-2xl border border-emerald-500/25 bg-[#006c35]/10 p-5 space-y-3.5 shadow-lg shadow-emerald-950/30 transition-all duration-300">
-            <h4 className="text-sm font-bold text-[#6ee7b7] flex items-center gap-1.5 leading-none">
-              <CheckCircle size={16} className="text-[#10b981]" />
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 space-y-3.5 shadow-sm transition-all duration-300">
+            <h4 className="text-sm font-bold text-emerald-900 flex items-center gap-1.5 leading-none">
+              <CheckCircle size={16} className="text-emerald-600" />
               <span>Grievance Generated Successfully</span>
             </h4>
             
-            <div className="grid gap-2 text-xs text-slate-300">
+            <div className="grid gap-2 text-xs text-slate-700">
               <div className="flex items-center gap-2 leading-none">
-                <span className="text-[#10b981] font-bold">✓</span>
+                <span className="text-emerald-600 font-bold">✓</span>
                 <span>Complaint Generated Successfully</span>
               </div>
               <div className="flex items-center gap-2 leading-none">
-                <span className="text-[#10b981] font-bold">✓</span>
+                <span className="text-emerald-600 font-bold">✓</span>
                 <span>Thank you for using Raabta AI</span>
               </div>
               <div className="flex items-center gap-2 leading-none">
-                <span className="text-[#10b981] font-bold">✓</span>
-                <span>Department Assigned: <strong className="text-white">{result.department}</strong></span>
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span>Department Assigned: <strong className="text-slate-900">{result.department}</strong></span>
               </div>
               <div className="flex items-center gap-2 leading-none">
-                <span className="text-[#10b981] font-bold">✓</span>
+                <span className="text-emerald-600 font-bold">✓</span>
                 <span>Official Complaint Ready</span>
               </div>
               <div className="flex items-center gap-2 leading-none">
-                <span className="text-[#10b981] font-bold">✓</span>
-                <span className="text-emerald-400 font-medium">Playing Urdu Voice Confirmation...</span>
+                <span className="text-emerald-600 font-bold">✓</span>
+                <span className="text-emerald-700 font-medium">Playing Urdu Voice Confirmation...</span>
               </div>
             </div>
             
             {isSpeaking && (
-              <div className="voice-speak-pulse-container border-t border-slate-900 pt-3">
+              <div className="voice-speak-pulse-container border-t border-emerald-200/60 pt-3">
                 <span className="voice-ripple-bar" style={{ background: 'linear-gradient(to top, var(--color-primary), var(--color-primary-hover))' }}></span>
                 <span className="voice-ripple-bar" style={{ background: 'linear-gradient(to top, var(--color-primary), var(--color-primary-hover))' }}></span>
                 <span className="voice-ripple-bar" style={{ background: 'linear-gradient(to top, var(--color-primary), var(--color-primary-hover))' }}></span>
@@ -1136,12 +1136,12 @@ function SubmitComplaintPage() {
         {result ? (
           <div className="flex-1 space-y-5">
             {/* Tracking ID & Live Case Link Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Permanent Tracking ID
                 </span>
-                <div className="font-mono text-base font-black text-emerald-400">
+                <div className="font-mono text-base font-black text-emerald-700">
                   {result.tracking_id}
                 </div>
               </div>
@@ -1154,7 +1154,7 @@ function SubmitComplaintPage() {
                 />
                 <Link
                   to={`/report/${result.report_id || result.tracking_id}`}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow inline-flex items-center gap-1.5 transition-colors"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition-colors"
                 >
                   <span>Open Full Case Dossier</span>
                   <ExternalLink size={13} />
@@ -1174,12 +1174,12 @@ function SubmitComplaintPage() {
             )}
 
             {/* Government style report card */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 space-y-6 text-slate-100 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-6 space-y-6 text-slate-800 shadow-sm">
               
               {/* official Pakistan Letterhead Emblem styling */}
-              <div className="border-b-2 border-[#006c35] pb-4 text-center space-y-1">
-                <p className="text-[10px] font-bold tracking-[0.2em] text-[#6ee7b7] uppercase leading-none">Government of Pakistan</p>
-                <h3 className="text-sm font-extrabold text-white tracking-widest leading-none">NATIONAL CIVIC DISPATCH CELL</h3>
+              <div className="border-b-2 border-emerald-700 pb-4 text-center space-y-1">
+                <p className="text-[10px] font-bold tracking-[0.2em] text-emerald-800 uppercase leading-none">Government of Pakistan</p>
+                <h3 className="text-sm font-extrabold text-slate-900 tracking-widest leading-none">NATIONAL CIVIC DISPATCH CELL</h3>
                 <p className="text-[9px] font-semibold text-slate-500 uppercase leading-none">Gemma-AI Generated Grievance Record</p>
               </div>
 
@@ -1187,7 +1187,7 @@ function SubmitComplaintPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Complaint Category</span>
-                  <p className="font-semibold text-white mt-1 text-sm">{result.issue}</p>
+                  <p className="font-semibold text-slate-900 mt-1 text-sm">{result.issue}</p>
                 </div>
 
                 <div>
@@ -1205,33 +1205,33 @@ function SubmitComplaintPage() {
 
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Assigned Agency</span>
-                  <p className="font-semibold text-white mt-1 text-sm">{result.department}</p>
+                  <p className="font-semibold text-slate-900 mt-1 text-sm">{result.department}</p>
                 </div>
 
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Audited Site Address</span>
-                  <p className="text-slate-300 mt-1 text-xs leading-tight">
+                  <p className="text-slate-700 mt-1 text-xs leading-tight">
                     {result.location.address || result.locationText || locationText || "Pakistan"}
                   </p>
                 </div>
               </div>
 
               {result.reason && (
-                <div className="border-t border-slate-900 pt-3">
+                <div className="border-t border-slate-100 pt-3">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">AI Validation Reason</span>
-                  <p className="text-slate-300 mt-1 text-xs leading-relaxed">{result.reason}</p>
+                  <p className="text-slate-700 mt-1 text-xs leading-relaxed">{result.reason}</p>
                 </div>
               )}
 
               {result.transcription && (
-                <div className="border-t border-slate-900 pt-3">
+                <div className="border-t border-slate-100 pt-3">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Transcript Audited</span>
-                  <p className="text-slate-300 mt-1 text-xs italic">"{result.transcription}"</p>
+                  <p className="text-slate-700 mt-1 text-xs italic">"{result.transcription}"</p>
                 </div>
               )}
 
               {/* Subject & Complaint dossiers */}
-              <div className="border-t border-slate-900 pt-4 space-y-2">
+              <div className="border-t border-slate-100 pt-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Official Dossier Text</span>
                   <button
@@ -1241,25 +1241,25 @@ function SubmitComplaintPage() {
                       setCopied(true)
                       setTimeout(() => setCopied(false), 2000)
                     }}
-                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition flex items-center gap-1 cursor-pointer"
                   >
                     <Copy size={12} />
                     <span>{copied ? "Copied!" : "Copy Complaint"}</span>
                   </button>
                 </div>
                 
-                <h5 className="font-bold text-white text-xs bg-slate-950 p-3 rounded border border-slate-900 leading-snug">
+                <h5 className="font-bold text-slate-900 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200 leading-snug">
                   Subject: {result.subject}
                 </h5>
 
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mt-2">Generated Complaint Dossier</span>
-                <div className="rounded-xl bg-slate-950 p-4 text-slate-300 border border-slate-900 text-xs font-mono whitespace-pre-line leading-relaxed max-h-56 overflow-y-auto">
+                <div className="rounded-xl bg-slate-50 p-4 text-slate-800 border border-slate-200 text-xs font-mono whitespace-pre-line leading-relaxed max-h-56 overflow-y-auto">
                   {result.body}
                 </div>
               </div>
 
               {/* Primary action list */}
-              <div className="pt-4 border-t border-slate-900 flex flex-wrap gap-3">
+              <div className="pt-4 border-t border-slate-100 flex flex-wrap gap-3">
                 <Link
                   to={`/report/${result.report_id || result.tracking_id}`}
                   className="btn-primary flex-1 py-3 text-xs flex items-center justify-center gap-1.5"
@@ -1287,13 +1287,13 @@ function SubmitComplaintPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8 space-y-6">
-            <div className="h-16 w-16 rounded-full bg-slate-900/60 flex items-center justify-center text-slate-700 border border-slate-900">
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8 space-y-6">
+            <div className="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 border border-slate-200">
               <Info size={28} />
             </div>
             
             <div className="text-center max-w-sm space-y-2">
-              <h4 className="font-bold text-slate-400">Workspace Empty</h4>
+              <h4 className="font-bold text-slate-800">Workspace Empty</h4>
               <p className="text-xs leading-relaxed text-slate-500">
                 Setup your input details on the left, then click <strong>Generate Complaint</strong> to run the Google Gemma AI workflow and draft your official case report.
               </p>

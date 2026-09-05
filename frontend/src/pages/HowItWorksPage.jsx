@@ -65,13 +65,13 @@ function HowItWorksPage() {
     <div className="space-y-12 max-w-5xl mx-auto py-4">
       {/* HEADER */}
       <section className="text-center space-y-4">
-        <span className="badge badge-purple bg-emerald-950/20 border-emerald-900/35 text-emerald-400 text-xs py-1.5 px-4">
+        <span className="inline-flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold py-1.5 px-4 rounded-full">
           🇵🇰 CITIZEN ONBOARDING GUIDE
         </span>
-        <h1 className="text-3xl font-extrabold sm:text-4xl lg:text-5xl text-white tracking-tight">
+        <h1 className="text-3xl font-extrabold sm:text-4xl lg:text-5xl text-slate-900 tracking-tight">
           How Raabta AI Works
         </h1>
-        <p className="text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
           Our platform simplifies reporting civic breakdowns for ordinary citizens. 
           Get your complaints resolved in four simple stages powered by Google Gemma.
         </p>
@@ -88,35 +88,35 @@ function HowItWorksPage() {
           <motion.div
             key={item.step}
             variants={cardVariants}
-            className="glass-panel relative flex flex-col justify-between overflow-hidden border border-slate-800/80 bg-slate-900/10 hover:border-[#0B6B3A]/30 transition-all duration-300"
+            className="relative flex flex-col justify-between overflow-hidden border border-slate-200/90 bg-white rounded-2xl p-6 shadow-sm hover:border-emerald-500/40 hover:shadow-md transition-all duration-300"
           >
             {/* Step Number Badge */}
-            <div className="absolute top-0 right-0 bg-[#0B6B3A] text-white font-extrabold px-4 py-2 rounded-bl-2xl text-sm tracking-wider">
+            <div className="absolute top-0 right-0 bg-emerald-700 text-white font-extrabold px-4 py-1.5 rounded-bl-2xl text-xs tracking-wider">
               STEP {item.step}
             </div>
 
-            <div className="space-y-6 mt-4">
-              <div className="inline-flex p-4 rounded-2xl bg-slate-950/50 border border-slate-900 w-fit">
+            <div className="space-y-6 mt-2">
+              <div className="inline-flex p-4 rounded-2xl bg-slate-50 border border-slate-200/80 w-fit">
                 {item.icon}
               </div>
 
               <div className="space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#10b981]">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">
                   {item.badge}
                 </span>
-                <h3 className="text-xl font-bold text-white tracking-tight">
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">
                   {item.title}
                 </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
+                <p className="text-sm text-slate-600 leading-relaxed">
                   {item.desc}
                 </p>
               </div>
             </div>
             
-            <div className="mt-8 pt-4 border-t border-slate-900/50 text-xs font-semibold text-slate-500 flex items-center justify-between">
+            <div className="mt-8 pt-4 border-t border-slate-100 text-xs font-semibold text-slate-400 flex items-center justify-between">
               <span>Raabta Dispatch System</span>
               {index < 3 && (
-                <span className="flex items-center gap-1 text-[#10b981]">
+                <span className="flex items-center gap-1 text-emerald-700">
                   Proceed to Step {index + 2} <ArrowRight size={12} />
                 </span>
               )}
@@ -126,12 +126,12 @@ function HowItWorksPage() {
       </motion.section>
 
       {/* CALL TO ACTION */}
-      <section className="glass-panel text-center p-8 md:p-12 bg-gradient-to-br from-emerald-950/10 via-slate-900/50 to-slate-950/30 border border-[#0B6B3A]/20">
-        <h2 className="text-2xl font-bold text-white">Ready to report a civic issue?</h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-xl mx-auto">
+      <section className="text-center p-8 md:p-12 bg-gradient-to-br from-emerald-50/50 via-white to-slate-50 border border-slate-200/90 rounded-2xl shadow-sm space-y-4">
+        <h2 className="text-2xl font-bold text-slate-900">Ready to report a civic issue?</h2>
+        <p className="text-sm text-slate-600 max-w-xl mx-auto">
           Help improve your neighborhood. File a complaint using camera, microphone, or simple text description.
         </p>
-        <div className="mt-6 flex justify-center gap-4">
+        <div className="pt-2 flex justify-center gap-4">
           <button
             type="button"
             onClick={() => navigate('/submit')}
@@ -148,7 +148,6 @@ function HowItWorksPage() {
             <span>Back to Home</span>
           </button>
         </div>
-
       </section>
     </div>
   )
