@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
+import Hero3DVisual from '../components/Hero3DVisual'
 
 export default function LandingPage() {
   const { currentUser, role, logout, isAuthenticated } = useAuth()
@@ -38,10 +39,10 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-emerald-500/20 selection:text-emerald-900 font-sans overflow-x-hidden antialiased">
+    <div className="min-h-screen bg-[#faf9f6] text-slate-900 selection:bg-emerald-500/20 selection:text-emerald-900 font-sans overflow-x-hidden antialiased">
       
       {/* 1. STICKY LIGHT NAVIGATION */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl transition-all shadow-xs">
+      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl transition-all shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
           <Logo size="md" to="/" theme="light" />
 
@@ -177,88 +178,118 @@ export default function LandingPage() {
       </header>
 
       <main>
-        {/* 2. HERO SECTION */}
-        <section id="home" className="relative pt-16 pb-20 md:pt-24 md:pb-28 overflow-hidden bg-gradient-to-b from-white via-slate-50 to-[#f1f5f9]">
+        {/* 2. HERO SECTION — EDITORIAL 2-COLUMN WITH 3D VISUAL */}
+        <section id="home" className="relative pt-12 pb-16 md:pt-16 md:pb-24 overflow-hidden bg-gradient-to-b from-[#faf9f6] via-white to-[#f8fafc]">
+          {/* Subtle Ambient Depth and Delicate Cultural Geometry */}
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[450px] bg-gradient-to-b from-emerald-500/10 via-teal-500/5 to-transparent blur-[120px] rounded-full" />
-            <div className="absolute top-40 right-10 w-72 h-72 bg-blue-500/5 blur-[100px] rounded-full" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[550px] bg-gradient-to-b from-emerald-500/8 via-teal-500/5 to-transparent blur-[140px] rounded-full" />
+            <div className="absolute top-40 -left-20 w-80 h-80 bg-amber-500/5 blur-[120px] rounded-full" />
+            <div className="absolute top-60 right-0 w-96 h-96 bg-blue-500/5 blur-[120px] rounded-full" />
+            <div className="absolute inset-0 bg-[radial-gradient(#059669_0.75px,transparent_0.75px)] [background-size:28px_28px] opacity-[0.03]" />
           </div>
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="text-center max-w-4xl mx-auto space-y-6"
-            >
-              <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-semibold shadow-xs">
-                <span>🇵🇰</span>
-                <span>National Civic Intelligence & Municipal Dispatch Platform</span>
-              </motion.div>
-
-              <motion.h1
-                variants={itemVariants}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-900 leading-[1.15]"
+            {/* 2-Column Editorial Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+              
+              {/* LEFT COLUMN: Editorial Typography & CTAs */}
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="lg:col-span-6 xl:col-span-6 space-y-6 text-left"
               >
-                Intelligent Civic Triage.{' '}
-                <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 bg-clip-text text-transparent">
-                  Accelerated Municipal Response.
-                </span>
-              </motion.h1>
+                <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50/90 border border-emerald-200/80 text-emerald-800 text-xs font-semibold shadow-2xs">
+                  <span>🇵🇰</span>
+                  <span>National Civic Intelligence & Municipal Dispatch Platform</span>
+                </motion.div>
 
-              <motion.p
-                variants={itemVariants}
-                className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-3xl mx-auto"
-              >
-                Transforming municipal governance in Pakistan. Citizens report infrastructure hazards through photos or Urdu/English voice notes; our AI calculates an explainable <strong>0–100 Civic Risk Score</strong>, merges nearby duplicates within <strong>250m</strong>, and dispatches directly to IESCO, CDA, WASA, SNGPL, and IWMC.
-              </motion.p>
-
-              {/* Action Buttons */}
-              <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-2">
-                {isAuthenticated ? (
-                  <Link
-                    to={portalRoute}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                  >
-                    <span>Go to Your Portal ({role})</span>
-                    <ArrowRight size={16} />
-                  </Link>
-                ) : (
-                  <>
-                    <Link
-                      to="/signup"
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                      <UserPlus size={16} />
-                      <span>Citizen Access</span>
-                    </Link>
-                    <Link
-                      to="/login"
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-sm shadow-xs transition-all"
-                    >
-                      <LogIn size={16} className="text-emerald-600" />
-                      <span>Portal Login</span>
-                    </Link>
-                  </>
-                )}
-                <a
-                  href="#how-it-works"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all"
+                <motion.h1
+                  variants={itemVariants}
+                  className="text-4xl sm:text-5xl lg:text-5xl xl:text-6xl font-black tracking-tight text-slate-900 leading-[1.12]"
                 >
-                  <span>See How It Works</span>
-                </a>
+                  Intelligent Civic Triage.{' '}
+                  <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 bg-clip-text text-transparent">
+                    Accelerated Municipal Response.
+                  </span>
+                </motion.h1>
+
+                <motion.p
+                  variants={itemVariants}
+                  className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed"
+                >
+                  Transforming municipal governance in Pakistan. Citizens report infrastructure hazards through photos or Urdu/English voice notes; our AI calculates an explainable <strong>0–100 Civic Risk Score</strong>, merges nearby duplicates within <strong>250m</strong>, and dispatches directly to IESCO, CDA, WASA, SNGPL, and IWMC.
+                </motion.p>
+
+                {/* Action Buttons */}
+                <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                  {isAuthenticated ? (
+                    <Link
+                      to={portalRoute}
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                    >
+                      <span>Go to Your Portal ({role})</span>
+                      <ArrowRight size={16} />
+                    </Link>
+                  ) : (
+                    <>
+                      <Link
+                        to="/signup"
+                        className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md shadow-emerald-900/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                      >
+                        <UserPlus size={16} />
+                        <span>Citizen Access</span>
+                      </Link>
+                      <Link
+                        to="/login"
+                        className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold text-sm shadow-xs transition-all"
+                      >
+                        <LogIn size={16} className="text-emerald-600" />
+                        <span>Portal Login</span>
+                      </Link>
+                    </>
+                  )}
+                  <a
+                    href="#how-it-works"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm transition-all"
+                  >
+                    <span>See How It Works</span>
+                  </a>
+                </motion.div>
+
+                {/* Integrated Agencies Ribbon */}
+                <motion.div variants={itemVariants} className="pt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span className="font-semibold uppercase tracking-wider text-[10px] text-slate-400">Integrated Agencies:</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 font-medium text-[11px] shadow-2xs">⚡ IESCO</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 font-medium text-[11px] shadow-2xs">🛣️ CDA</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 font-medium text-[11px] shadow-2xs">💧 WASA</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 font-medium text-[11px] shadow-2xs">🔥 SNGPL</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 font-medium text-[11px] shadow-2xs">♻️ IWMC</span>
+                </motion.div>
+
+                {/* Core Architecture Trust Badges */}
+                <motion.div variants={itemVariants} className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-200/80">
+                  <div className="space-y-0.5">
+                    <p className="text-lg font-black text-slate-900 tracking-tight">0–100</p>
+                    <p className="text-[11px] text-slate-500 font-medium leading-tight">Explainable Risk</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-lg font-black text-emerald-700 tracking-tight">250m</p>
+                    <p className="text-[11px] text-slate-500 font-medium leading-tight">Proximity Merge</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-lg font-black text-slate-900 tracking-tight">Urdu + EN</p>
+                    <p className="text-[11px] text-slate-500 font-medium leading-tight">Multimodal Voice</p>
+                  </div>
+                </motion.div>
               </motion.div>
 
-              {/* Supported Agencies Ribbon */}
-              <motion.div variants={itemVariants} className="pt-6 flex flex-wrap items-center justify-center gap-2.5 text-xs text-slate-500">
-                <span className="font-semibold uppercase tracking-wider text-[11px] text-slate-400">Integrated Agencies:</span>
-                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 font-medium shadow-2xs">⚡ IESCO (Power)</span>
-                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 font-medium shadow-2xs">🛣️ CDA (Roads)</span>
-                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 font-medium shadow-2xs">💧 WASA (Water)</span>
-                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 font-medium shadow-2xs">🔥 SNGPL (Gas)</span>
-                <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 font-medium shadow-2xs">♻️ IWMC (Waste)</span>
-              </motion.div>
-            </motion.div>
+              {/* RIGHT COLUMN: Interactive 3D Visual */}
+              <div className="lg:col-span-6 xl:col-span-6 flex items-center justify-center">
+                <Hero3DVisual />
+              </div>
+
+            </div>
 
             {/* REAL ARCHITECTURE FLOW DIAGRAM (Light Theme) */}
             <motion.div
