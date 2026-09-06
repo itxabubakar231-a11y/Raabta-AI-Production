@@ -100,8 +100,8 @@ export default function ReportDetailPage() {
 
   if (viewState === 'loading') {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-slate-500 text-xs">
-        <RefreshCw size={24} className="animate-spin text-emerald-600" />
+      <div className="min-h-[50vh] flex flex-col items-center justify-center gap-3 text-[#627282] text-xs">
+        <RefreshCw size={24} className="animate-spin text-emerald-700" />
         <span>Loading report details from database...</span>
       </div>
     )
@@ -112,7 +112,7 @@ export default function ReportDetailPage() {
     const isForbidden = viewState === 'forbidden'
 
     return (
-      <div className="p-8 max-w-2xl mx-auto text-center space-y-4 bg-white border border-slate-200/90 rounded-2xl shadow-xs">
+      <div className="p-8 max-w-2xl mx-auto text-center space-y-4 bg-white border border-[#0c1824]/8 rounded-3xl shadow-sm">
         <div className={`inline-flex p-3 rounded-2xl ${
           isForbidden ? 'bg-amber-50 text-amber-600 border border-amber-200' :
           isNetwork ? 'bg-blue-50 text-blue-600 border border-blue-200' :
@@ -120,16 +120,16 @@ export default function ReportDetailPage() {
         }`}>
           {isForbidden ? <ShieldAlert size={32} /> : isNetwork ? <RefreshCw size={32} /> : <AlertTriangle size={32} />}
         </div>
-        <h3 className="text-lg font-bold text-slate-900">
+        <h3 className="text-lg font-bold text-[#0c1824] font-display">
           {isForbidden ? 'Access Restricted' : isNetwork ? 'Unable to Connect to Server' : 'Report Not Found'}
         </h3>
-        <p className="text-xs text-slate-500">{error || 'Please check the Tracking ID.'}</p>
+        <p className="text-xs text-[#627282]">{error || 'Please check the Tracking ID.'}</p>
         <div className="flex items-center justify-center gap-3 pt-2">
           {isNetwork && (
             <button
               type="button"
               onClick={() => loadReport()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+              className="btn-primary inline-flex items-center gap-1.5 py-2 px-4 text-xs rounded-xl"
             >
               <RefreshCw size={14} />
               <span>Retry Loading</span>
@@ -137,13 +137,13 @@ export default function ReportDetailPage() {
           )}
           <Link
             to="/track"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
+            className="btn-secondary inline-flex items-center gap-1.5 py-2 px-4 text-xs rounded-xl"
           >
             <span>Track by ID</span>
           </Link>
           <Link
             to="/app/reports"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 text-slate-800 text-xs font-semibold hover:bg-slate-200 border border-slate-200 transition-colors"
+            className="btn-secondary inline-flex items-center gap-1.5 py-2 px-4 text-xs rounded-xl"
           >
             <ArrowLeft size={14} />
             <span>My Reports</span>
@@ -177,7 +177,7 @@ export default function ReportDetailPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           to="/app/reports"
-          className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-[#3e4c59] hover:text-[#0c1824] font-semibold transition-colors"
         >
           <ArrowLeft size={14} />
           <span>Back to My Reports</span>
@@ -188,7 +188,7 @@ export default function ReportDetailPage() {
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs border border-slate-200 shadow-xs transition-colors"
+            className="btn-secondary inline-flex items-center gap-2 py-1.5 px-3.5 text-xs rounded-xl"
           >
             <Download size={14} />
             <span>Download PDF Report</span>
@@ -197,11 +197,11 @@ export default function ReportDetailPage() {
       </div>
 
       {/* Main Report Header Card */}
-      <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
-          <div className="space-y-1">
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#0c1824]/8 shadow-sm space-y-5">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#0c1824]/6 pb-5">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xs font-mono font-bold text-emerald-800 px-2 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200">
+              <span className="text-xs font-mono font-bold text-emerald-900 px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200/80">
                 {report.tracking_id}
               </span>
               <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border ${statusBadgeClass}`}>
@@ -218,7 +218,7 @@ export default function ReportDetailPage() {
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-black text-slate-900 pt-1">{report.title}</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-[#0c1824] pt-1 font-display">{report.title}</h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -232,66 +232,66 @@ export default function ReportDetailPage() {
 
         {/* Metadata Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-            <div className="flex items-center gap-1.5 text-slate-500 font-semibold mb-1">
-              <Building size={14} className="text-emerald-600" />
+          <div className="p-3.5 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6">
+            <div className="flex items-center gap-1.5 text-[#627282] font-semibold mb-1">
+              <Building size={14} className="text-emerald-700" />
               <span>Assigned Department</span>
             </div>
-            <p className="font-bold text-slate-900 truncate">
+            <p className="font-bold text-[#0c1824] truncate font-display">
               {report.department_name || report.department_id || 'CDA Municipal Authority'}
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-            <div className="flex items-center gap-1.5 text-slate-500 font-semibold mb-1">
-              <MapPin size={14} className="text-emerald-600" />
+          <div className="p-3.5 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6">
+            <div className="flex items-center gap-1.5 text-[#627282] font-semibold mb-1">
+              <MapPin size={14} className="text-emerald-700" />
               <span>Reported Location</span>
             </div>
-            <p className="font-bold text-slate-900 truncate" title={loc.address || loc.city}>
+            <p className="font-bold text-[#0c1824] truncate" title={loc.address || loc.city}>
               {loc.address || loc.city || 'Islamabad Capital Territory'}
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-            <div className="flex items-center gap-1.5 text-slate-500 font-semibold mb-1">
-              <Calendar size={14} className="text-emerald-600" />
+          <div className="p-3.5 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6">
+            <div className="flex items-center gap-1.5 text-[#627282] font-semibold mb-1">
+              <Calendar size={14} className="text-emerald-700" />
               <span>Date Submitted</span>
             </div>
-            <p className="font-bold text-slate-900">
+            <p className="font-bold text-[#0c1824] font-display">
               {report.created_at ? new Date(report.created_at).toLocaleString() : 'N/A'}
             </p>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
-            <div className="flex items-center gap-1.5 text-slate-500 font-semibold mb-1">
-              <Shield size={14} className="text-emerald-600" />
+          <div className="p-3.5 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6">
+            <div className="flex items-center gap-1.5 text-[#627282] font-semibold mb-1">
+              <Shield size={14} className="text-emerald-700" />
               <span>Duty Officer</span>
             </div>
-            <p className="font-bold text-slate-900 truncate">
+            <p className="font-bold text-[#0c1824] truncate font-display">
               {report.assigned_officer_name || 'Pending Officer Assignment'}
             </p>
           </div>
         </div>
 
-        {/* Description / Statement */}
-        <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/80 space-y-1.5 text-xs">
-          <span className="font-bold uppercase tracking-wider text-slate-500 text-[11px]">
+        {/* Problem Description */}
+        <div className="p-4 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6 space-y-1.5 text-xs">
+          <span className="font-bold uppercase tracking-wider text-[#627282] text-[11px] font-display">
             Problem Description
           </span>
-          <p className="text-slate-700 leading-relaxed whitespace-pre-line text-sm">
+          <p className="text-[#3e4c59] leading-relaxed whitespace-pre-line text-sm">
             {report.description}
           </p>
         </div>
 
         {/* Audio Transcript / Voice Note if available */}
         {(report.evidence?.transcript || report.evidence?.audio_base64 || report.evidence?.audio_url) && (
-          <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200 text-xs space-y-2">
-            <div className="flex items-center gap-2 text-emerald-800 font-bold">
-              <Volume2 size={16} className="text-emerald-600" />
+          <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold font-display">
+              <Volume2 size={16} className="text-emerald-700" />
               <span>Voice Note Audio Recording</span>
             </div>
             {report.evidence?.transcript && (
-              <p className="text-slate-700 italic bg-white p-3 rounded-xl border border-emerald-100">
+              <p className="text-[#3e4c59] italic bg-white p-3 rounded-xl border border-emerald-100 font-editorial">
                 "{report.evidence.transcript}"
               </p>
             )}
@@ -313,31 +313,31 @@ export default function ReportDetailPage() {
 
           {/* Evidence Card */}
           {(report.evidence?.image_url || report.evidence?.image_base64) && (
-            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 space-y-2 shadow-xs">
-              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <div className="p-4 rounded-3xl bg-white border border-[#0c1824]/8 space-y-2 shadow-sm">
+              <h4 className="text-xs font-bold text-[#0c1824] uppercase tracking-wider font-display">
                 Photo Evidence
               </h4>
               <img
                 src={report.evidence.image_base64 || report.evidence.image_url}
                 alt="Problem Evidence"
-                className="w-full h-48 object-cover rounded-xl border border-slate-200 shadow-xs"
+                className="w-full h-48 object-cover rounded-2xl border border-[#0c1824]/8 shadow-xs"
               />
             </div>
           )}
 
           {/* Location Map Preview */}
           {hasCoordinates && (
-            <div className="p-4 rounded-2xl bg-white border border-slate-200/90 space-y-2 shadow-xs">
+            <div className="p-4 rounded-3xl bg-white border border-[#0c1824]/8 space-y-2 shadow-sm">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <Navigation size={13} className="text-emerald-600" />
+                <h4 className="text-xs font-bold text-[#0c1824] uppercase tracking-wider flex items-center gap-1.5 font-display">
+                  <Navigation size={13} className="text-emerald-700" />
                   <span>Problem Location</span>
                 </h4>
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="text-[10px] text-[#627282] font-mono">
                   {lat.toFixed(4)}, {lon.toFixed(4)}
                 </span>
               </div>
-              <div className="h-44 rounded-xl overflow-hidden border border-slate-200">
+              <div className="h-44 rounded-2xl overflow-hidden border border-[#0c1824]/8">
                 <MapContainer
                   center={[lat, lon]}
                   zoom={15}
@@ -352,8 +352,8 @@ export default function ReportDetailPage() {
                     center={[lat, lon]}
                     radius={10}
                     pathOptions={{
-                      fillColor: '#16a34a',
-                      color: '#14532d',
+                      fillColor: '#059669',
+                      color: '#064e3b',
                       weight: 2,
                       fillOpacity: 0.8
                     }}
@@ -374,19 +374,19 @@ export default function ReportDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Officer Request-Info Alert & Citizen Response Form */}
           {report.needs_citizen_response && report.citizen_info_request && (
-            <div className="p-5 rounded-2xl bg-amber-50/90 border-2 border-amber-300 shadow-sm space-y-3">
+            <div className="p-5 sm:p-6 rounded-3xl bg-amber-50/90 border-2 border-amber-300 shadow-sm space-y-3.5">
               <div className="flex items-start gap-2.5">
                 <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
                   <Clock size={18} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-amber-950">
+                  <h4 className="text-sm font-bold text-amber-950 font-display">
                     The assigned officer has requested additional details
                   </h4>
                   <p className="text-xs text-amber-900 leading-relaxed bg-white/80 p-3 rounded-xl border border-amber-200">
                     "{report.citizen_info_request.note}"
                   </p>
-                  <p className="text-[11px] text-amber-700">
+                  <p className="text-[11px] text-amber-800 font-mono">
                     Requested by <strong>{report.citizen_info_request.requested_by || 'Assigned Officer'}</strong>
                     {report.citizen_info_request.requested_at && ` on ${new Date(report.citizen_info_request.requested_at).toLocaleString()}`}
                   </p>
@@ -408,7 +408,7 @@ export default function ReportDetailPage() {
               )}
 
               <form onSubmit={handleOfficerReplySubmit} className="space-y-2 pt-1">
-                <label className="block text-xs font-bold text-amber-950">
+                <label className="block text-xs font-bold text-amber-950 font-display">
                   Your Response:
                 </label>
                 <textarea
@@ -423,7 +423,7 @@ export default function ReportDetailPage() {
                   <button
                     type="submit"
                     disabled={submittingReply || !officerReply.trim()}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs disabled:opacity-50 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs shadow-sm disabled:opacity-50 transition-colors cursor-pointer"
                   >
                     <Send size={13} />
                     <span>{submittingReply ? 'Submitting...' : 'Submit Response'}</span>
@@ -434,42 +434,42 @@ export default function ReportDetailPage() {
           )}
 
           {/* Historical Additional Information Provided */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 space-y-3 shadow-xs">
-            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <HelpCircle size={16} className="text-emerald-600" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#0c1824]/8 space-y-3 shadow-sm">
+            <h4 className="text-sm font-bold text-[#0c1824] flex items-center gap-2 font-display">
+              <HelpCircle size={16} className="text-emerald-700" />
               <span>Additional Information</span>
             </h4>
             {report.missing_information_answers && report.missing_information_answers.length > 0 ? (
               <div className="space-y-2.5">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#627282]">
                   The following clarifications were recorded during submission to refine priority triage:
                 </p>
                 {report.missing_information_answers.map((item, idx) => (
-                  <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
-                    <p className="text-xs font-semibold text-slate-700">{item.question}</p>
-                    <p className="text-xs font-bold text-emerald-800 pl-2.5 border-l-2 border-emerald-500">
+                  <div key={idx} className="p-3 rounded-2xl bg-[#faf8f5] border border-[#0c1824]/6 space-y-1">
+                    <p className="text-xs font-semibold text-[#3e4c59]">{item.question}</p>
+                    <p className="text-xs font-bold text-emerald-900 pl-2.5 border-l-2 border-emerald-600">
                       {item.answer}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-500 italic">
+              <p className="text-xs text-[#627282] italic">
                 No additional information was required.
               </p>
             )}
 
             {/* Previously submitted responses to officer inquiries */}
             {report.citizen_responses && report.citizen_responses.length > 0 && (
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <div className="pt-3 border-t border-[#0c1824]/6 space-y-2">
+                <span className="text-[11px] font-bold text-[#627282] uppercase tracking-wider block font-display">
                   Responses Provided to Duty Officer
                 </span>
                 <div className="space-y-2">
                   {report.citizen_responses.map((cr, idx) => (
-                    <div key={idx} className="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200 text-xs space-y-1">
-                      <p className="text-slate-800">{cr.response || cr.note || JSON.stringify(cr)}</p>
-                      <span className="text-[10px] text-slate-400 block">
+                    <div key={idx} className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 text-xs space-y-1">
+                      <p className="text-[#0c1824]">{cr.response || cr.note || JSON.stringify(cr)}</p>
+                      <span className="text-[10px] text-[#627282] block font-mono">
                         {cr.created_at ? new Date(cr.created_at).toLocaleString() : ''}
                       </span>
                     </div>
@@ -483,9 +483,9 @@ export default function ReportDetailPage() {
           <ResolutionCard report={report} onUpdated={loadReport} />
 
           {/* Official Timeline & Activity History */}
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 space-y-4 shadow-xs">
-            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <FileText size={18} className="text-emerald-600" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#0c1824]/8 space-y-4 shadow-sm">
+            <h4 className="text-sm font-bold text-[#0c1824] flex items-center gap-2 font-display">
+              <FileText size={18} className="text-emerald-700" />
               <span>Activity History & Progress</span>
             </h4>
             <TimelineView timeline={report.timeline} currentStatus={report.status} />

@@ -32,15 +32,15 @@ export default function CitizenLayout() {
   ]
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#faf9f6] text-slate-900 selection:bg-emerald-500/20 selection:text-emerald-900">
-      {/* Top Banner (Pakistani Civic Service Identity) */}
-      <div className="bg-emerald-900 text-white text-[11px] font-medium py-1 px-4 text-center border-b border-emerald-800/40 hidden sm:flex items-center justify-between">
+    <div className="flex flex-col min-h-screen bg-[#faf8f5] text-[#0c1824] selection:bg-emerald-500/20 selection:text-emerald-950 antialiased geometric-bg-subtle">
+      {/* Top Banner (Civic Service Identity) */}
+      <div className="bg-[#064e3b] text-white text-[11px] font-medium py-1 px-4 text-center border-b border-[#044e3b] hidden sm:flex items-center justify-between">
         <div className="flex items-center gap-2 max-w-7xl mx-auto w-full justify-between">
           <span className="flex items-center gap-1.5 text-emerald-200">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Government of Pakistan • National Digital Civic Service</span>
           </span>
-          <span className="text-emerald-300/80 font-normal">
+          <span className="text-emerald-200/90 font-normal">
             Intelligent Citizen Reporting & Resolution Platform
           </span>
         </div>
@@ -52,10 +52,10 @@ export default function CitizenLayout() {
           <div className="brand-block" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
             <Logo size="md" to="/app" theme="light" />
             <div className="space-y-0.5 mt-1">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 leading-tight">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[#0c1824] leading-tight font-display">
                 Citizen Portal
               </p>
-              <p className="text-[10px] text-emerald-700 font-semibold leading-tight flex items-center gap-1">
+              <p className="text-[10px] text-emerald-800 font-semibold leading-tight flex items-center gap-1">
                 <span>🇵🇰 Islamabad & Regional Services</span>
               </p>
             </div>
@@ -75,7 +75,7 @@ export default function CitizenLayout() {
             <Link
               to="/app/report"
               onClick={() => setIsMobileNavOpen(false)}
-              className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+              className="btn-primary w-full py-2.5 px-3.5 text-xs rounded-xl"
             >
               <PlusCircle size={16} />
               <span>+ Report a Problem</span>
@@ -92,11 +92,11 @@ export default function CitizenLayout() {
                   to={item.path}
                   end={item.end}
                   className={({ isActive }) =>
-                    `nav-link${isActive ? ' active' : ''}${isAction ? ' font-semibold text-emerald-800' : ''}`
+                    `nav-link${isActive ? ' active' : ''}${isAction ? ' font-semibold text-emerald-900' : ''}`
                   }
                   onClick={() => setIsMobileNavOpen(false)}
                 >
-                  <Icon size={18} className={isAction ? 'text-emerald-700' : ''} />
+                  <Icon size={18} className={isAction ? 'text-emerald-800' : ''} />
                   <span>{item.label}</span>
                 </NavLink>
               )
@@ -104,28 +104,28 @@ export default function CitizenLayout() {
           </nav>
 
           {/* User Account Card Footer */}
-          <div className="p-3.5 border-t border-slate-200/80 mt-auto text-xs bg-slate-50/70 rounded-2xl">
+          <div className="p-3.5 border border-[#0c1824]/8 mt-auto text-xs bg-white rounded-2xl shadow-sm">
             {currentUser ? (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center font-bold text-xs shrink-0">
+                  <div className="h-8 w-8 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-900 flex items-center justify-center font-bold text-xs shrink-0 font-display">
                     {currentUser.full_name?.charAt(0) || 'C'}
                   </div>
                   <div className="truncate flex-1">
-                    <p className="font-bold text-slate-900 truncate text-[11px] leading-tight">
+                    <p className="font-bold text-[#0c1824] truncate text-[11px] leading-tight font-display">
                       {currentUser.full_name}
                     </p>
-                    <span className="text-[10px] text-emerald-700 font-semibold uppercase">
+                    <span className="text-[10px] text-emerald-800 font-semibold uppercase font-mono">
                       Citizen Account
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-[#0c1824]/6">
                   <Link
                     to="/app/settings"
                     onClick={() => setIsMobileNavOpen(false)}
-                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-200 shadow-2xs transition-colors"
+                    className="py-1.5 px-2 rounded-xl bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] text-[11px] font-medium flex items-center justify-center gap-1 border border-[#0c1824]/8 transition-colors"
                   >
                     <Settings size={12} />
                     <span>Settings</span>
@@ -136,7 +136,7 @@ export default function CitizenLayout() {
                       logout()
                       navigate('/login')
                     }}
-                    className="py-1.5 px-2 rounded-lg bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-200 shadow-2xs transition-colors cursor-pointer"
+                    className="py-1.5 px-2 rounded-xl bg-[#faf8f5] hover:bg-rose-50 text-[#3e4c59] hover:text-rose-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-[#0c1824]/8 transition-colors cursor-pointer"
                   >
                     <LogOut size={12} />
                     <span>Sign Out</span>
@@ -146,7 +146,7 @@ export default function CitizenLayout() {
             ) : (
               <Link
                 to="/login"
-                className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                className="btn-primary w-full py-2 px-3 text-xs rounded-xl"
               >
                 <span>Citizen Sign In</span>
               </Link>
@@ -168,10 +168,10 @@ export default function CitizenLayout() {
               </button>
 
               <div>
-                <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                <h2 className="text-base sm:text-lg font-bold text-[#0c1824] font-display">
                   Citizen Civic Services
                 </h2>
-                <p className="text-[11px] text-slate-500 hidden sm:block">
+                <p className="text-[11px] text-[#627282] hidden sm:block">
                   Report issues, track progress, and verify resolutions in your area.
                 </p>
               </div>
@@ -182,13 +182,13 @@ export default function CitizenLayout() {
 
               <Link
                 to="/app/report"
-                className="hidden sm:inline-flex items-center gap-1.5 py-1.5 px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-2xs transition-colors"
+                className="btn-primary hidden sm:inline-flex py-1.5 px-3.5 text-xs rounded-xl"
               >
                 <PlusCircle size={14} />
                 <span>Report Problem</span>
               </Link>
 
-              <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+              <div className="inline-flex items-center gap-1 rounded-full border border-[#0c1824]/8 bg-white px-2.5 py-1 text-xs font-semibold text-[#0c1824] shadow-2xs">
                 <span>🇵🇰</span>
                 <span className="hidden sm:inline text-[11px]">Pakistan</span>
               </div>
@@ -203,7 +203,7 @@ export default function CitizenLayout() {
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200/90 py-1.5 px-3 flex items-center justify-around shadow-lg"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#0c1824]/10 py-1.5 px-3 flex items-center justify-around shadow-2xl"
         aria-label="Mobile Bottom Navigation"
       >
         {mobileBottomItems.map((item) => {
@@ -219,10 +219,10 @@ export default function CitizenLayout() {
                 to={item.path}
                 className="flex flex-col items-center justify-center -mt-5"
               >
-                <div className="h-12 w-12 rounded-full bg-emerald-700 text-white flex items-center justify-center shadow-md border-2 border-white">
-                  <Icon size={24} />
+                <div className="h-12 w-12 rounded-full bg-emerald-800 text-white flex items-center justify-center shadow-lg border-2 border-white">
+                  <Icon size={22} />
                 </div>
-                <span className="text-[10px] font-bold text-emerald-800 mt-0.5">
+                <span className="text-[10px] font-bold text-emerald-900 mt-0.5 font-display">
                   {item.label}
                 </span>
               </Link>
@@ -234,10 +234,10 @@ export default function CitizenLayout() {
               key={item.path}
               to={item.path}
               className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition-colors ${
-                isActive ? 'text-emerald-700 font-bold' : 'text-slate-500 hover:text-slate-900'
+                isActive ? 'text-emerald-800 font-bold' : 'text-[#627282] hover:text-[#0c1824]'
               }`}
             >
-              <Icon size={20} />
+              <Icon size={19} />
               <span className="text-[10px] tracking-tight">{item.label}</span>
             </Link>
           )

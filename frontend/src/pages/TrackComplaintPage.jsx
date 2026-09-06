@@ -104,44 +104,44 @@ export default function TrackComplaintPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Section */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs">
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl p-6 sm:p-8 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              <Clock size={13} className="text-emerald-600" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-display">
+              <Clock size={13} className="text-emerald-700" />
               <span>Civic Activity Tracker</span>
             </div>
-            <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+            <h1 className="mt-2 text-2xl sm:text-3xl font-black text-[#0c1824] tracking-tight font-display">
               My Reports
             </h1>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-[#627282]">
               Track status updates, duty officer responses, and verify completed field work.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 w-full lg:max-w-md">
+          <div className="flex items-center gap-2.5 w-full lg:max-w-md">
             <div className="relative flex-1">
-              <span className="absolute left-3.5 top-2.5 text-slate-400">
+              <span className="absolute left-3.5 top-2.5 text-[#627282]">
                 <Search size={15} />
               </span>
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-600 outline-none text-xs transition-all"
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] placeholder-slate-400 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none text-xs transition-all"
                 placeholder="Search by Tracking ID (e.g. RA-2026-1000), issue, or area..."
               />
             </div>
             <button
               type="button"
               onClick={loadReports}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+              className="p-2.5 rounded-xl bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/8 transition-colors cursor-pointer"
               title="Refresh Reports"
             >
-              <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-600' : ''} />
+              <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-700' : ''} />
             </button>
             <Link
               to="/app/report"
-              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 shadow-xs transition-colors"
+              className="btn-primary py-2 px-3.5 text-xs rounded-xl font-bold shrink-0"
             >
               + Report Problem
             </Link>
@@ -149,14 +149,14 @@ export default function TrackComplaintPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-2 mt-6 pt-4 border-t border-[#0c1824]/6">
           <button
             type="button"
             onClick={() => handleTabChange('all')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'all'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-[#0c1824] text-white shadow-sm font-bold'
+                : 'bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/6'
             }`}
           >
             All Reports ({reports.length})
@@ -164,10 +164,10 @@ export default function TrackComplaintPage() {
           <button
             type="button"
             onClick={() => handleTabChange('active')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'active'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-[#0c1824] text-white shadow-sm font-bold'
+                : 'bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/6'
             }`}
           >
             Active ({activeCount})
@@ -175,10 +175,10 @@ export default function TrackComplaintPage() {
           <button
             type="button"
             onClick={() => handleTabChange('needs_response')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'needs_response'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
+                ? 'bg-amber-700 text-white shadow-sm font-bold'
+                : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200'
             }`}
           >
             <AlertTriangle size={13} />
@@ -187,10 +187,10 @@ export default function TrackComplaintPage() {
           <button
             type="button"
             onClick={() => handleTabChange('resolved')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeTab === 'resolved'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                ? 'bg-[#0c1824] text-white shadow-sm font-bold'
+                : 'bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/6'
             }`}
           >
             Resolved ({resolvedCount})
@@ -201,8 +201,8 @@ export default function TrackComplaintPage() {
       {/* Reports List */}
       <section className="space-y-4">
         {loading ? (
-          <div className="p-12 text-center text-xs text-slate-500 flex flex-col items-center gap-2 bg-white rounded-2xl border border-slate-200/90 shadow-xs">
-            <RefreshCw size={20} className="animate-spin text-emerald-600" />
+          <div className="p-12 text-center text-xs text-[#627282] flex flex-col items-center gap-2 bg-white rounded-3xl border border-[#0c1824]/8 shadow-sm">
+            <RefreshCw size={20} className="animate-spin text-emerald-700" />
             <span>Loading your reports from database...</span>
           </div>
         ) : filteredReports.length > 0 ? (
@@ -233,13 +233,13 @@ export default function TrackComplaintPage() {
             return (
               <article
                 key={item.id || item._id}
-                className="p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-emerald-500/40 hover:shadow-sm transition-all space-y-4 shadow-xs"
+                className="p-5 sm:p-6 rounded-3xl border border-[#0c1824]/8 bg-white hover:border-emerald-600/40 hover:shadow-md transition-all space-y-4 shadow-sm"
               >
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                   {/* Left: Summary */}
                   <div className="space-y-2 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-emerald-800 px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                      <span className="font-mono text-xs font-bold text-emerald-900 px-2.5 py-0.5 rounded-lg bg-emerald-50 border border-emerald-200/80">
                         {item.tracking_id}
                       </span>
                       <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusBadgeClass}`}>
@@ -253,23 +253,23 @@ export default function TrackComplaintPage() {
                       <RiskScoreGauge riskData={item.civic_risk_score} compact={true} />
                     </div>
 
-                    <h3 className="text-base font-bold text-slate-900 leading-snug">
-                      <Link to={`/app/reports/${item.id || item._id}`} className="hover:text-emerald-700 transition-colors">
+                    <h3 className="text-base font-bold text-[#0c1824] leading-snug font-display">
+                      <Link to={`/app/reports/${item.id || item._id}`} className="hover:text-emerald-800 transition-colors">
                         {item.title}
                       </Link>
                     </h3>
 
-                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">
+                    <p className="text-xs text-[#3e4c59] leading-relaxed line-clamp-2">
                       {item.description}
                     </p>
 
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-[#627282] pt-1">
                       <span className="flex items-center gap-1">
-                        <Building size={13} className="text-emerald-600" />
+                        <Building size={13} className="text-emerald-700" />
                         <span>{item.department_name || item.department_id || 'CDA Municipal Authority'}</span>
                       </span>
                       <span className="flex items-center gap-1">
-                        <MapPin size={13} className="text-emerald-600" />
+                        <MapPin size={13} className="text-emerald-700" />
                         <span>{item.location?.address || item.location?.area || item.location?.city || 'Islamabad Capital Territory'}</span>
                       </span>
                       <span className="flex items-center gap-1">
@@ -279,19 +279,19 @@ export default function TrackComplaintPage() {
                     </div>
 
                     {isResolved && (
-                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-2">
+                      <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-2">
                         <div>
-                          <p className="font-bold flex items-center gap-1.5 text-amber-900">
-                            <CheckCircle2 size={15} className="text-emerald-600" />
+                          <p className="font-bold flex items-center gap-1.5 text-amber-950 font-display">
+                            <CheckCircle2 size={15} className="text-emerald-700" />
                             <span>Your problem has been marked as fixed!</span>
                           </p>
-                          <p className="text-[11px] text-amber-800 mt-0.5">
+                          <p className="text-[11px] text-amber-850 mt-0.5">
                             Please check the site and confirm if the work was completed properly.
                           </p>
                         </div>
                         <Link
                           to={`/app/reports/${item.id || item._id}`}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 shadow-xs transition-colors"
+                          className="btn-primary py-1.5 px-3.5 text-xs rounded-xl font-bold shrink-0"
                         >
                           Confirm or Dispute
                         </Link>
@@ -303,7 +303,7 @@ export default function TrackComplaintPage() {
                   <div className="flex flex-col sm:flex-row lg:flex-col gap-2 min-w-[180px] shrink-0">
                     <Link
                       to={`/app/reports/${item.id || item._id}`}
-                      className="py-2 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                      className="btn-primary py-2 px-3.5 text-xs rounded-xl font-bold flex items-center justify-center gap-1.5"
                     >
                       <FileText size={14} />
                       <span>View Details</span>
@@ -313,7 +313,7 @@ export default function TrackComplaintPage() {
                       href={pdfUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="py-2 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-200 transition-colors"
+                      className="btn-secondary py-2 px-3.5 text-xs rounded-xl font-semibold flex items-center justify-center gap-1.5"
                     >
                       <Download size={14} />
                       <span>Download PDF</span>

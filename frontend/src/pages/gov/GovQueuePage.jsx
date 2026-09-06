@@ -96,52 +96,52 @@ export default function GovQueuePage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <ShieldAlert size={13} className="text-emerald-600" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-display">
+            <ShieldAlert size={13} className="text-emerald-700" />
             <span>
               {isOfficer
                 ? `Operational Queue — ${currentUser?.department_name || officerDept || 'Duty Officer Desk'}`
                 : 'System-Wide Triage Queue'}
             </span>
           </div>
-          <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+          <h1 className="mt-2 text-2xl sm:text-3xl font-black text-[#0c1824] tracking-tight font-display">
             {isOfficer ? 'Department Priority Queue' : 'Reports Needing Attention'}
           </h1>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-[#627282]">
             {isOfficer
               ? `Operational incidents assigned to ${currentUser?.department_name || officerDept}. Sorted by Risk Priority.`
               : 'Sorted strictly by Risk Priority (Descending) and Submission Time (Ascending) for compliant SLA resolution.'}
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <div className="relative">
-            <Search size={15} className="absolute left-3.5 top-2.5 text-slate-400" />
+            <Search size={15} className="absolute left-3.5 top-2.5 text-[#627282]" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tracking ID or keyword..."
-              className="pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-xs focus:bg-white focus:border-emerald-600 outline-none w-64 transition-all"
+              className="pl-9 pr-4 py-2 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] text-xs focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 outline-none w-64 transition-all"
             />
           </div>
           <button
             type="button"
             onClick={loadData}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+            className="p-2.5 rounded-xl bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/8 transition-colors cursor-pointer"
             title="Refresh Queue"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-600' : ''} />
+            <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-700' : ''} />
           </button>
         </div>
       </section>
 
       {/* Filter Toolbar */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs space-y-3">
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
         {/* Quick Status Tabs */}
-        <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-100">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Quick View:</span>
+        <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-[#0c1824]/6">
+          <span className="text-[10px] font-bold text-[#627282] uppercase tracking-wider mr-1 font-display">Quick View:</span>
           {[
             { id: 'all', label: 'All Incidents' },
             { id: 'submitted', label: 'New / Unassigned' },
@@ -154,10 +154,10 @@ export default function GovQueuePage() {
               key={tab.id}
               type="button"
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 statusFilter === tab.id
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  ? 'bg-emerald-700 text-white shadow-sm font-bold'
+                  : 'bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/6'
               }`}
             >
               {tab.label}
@@ -166,7 +166,7 @@ export default function GovQueuePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+          <div className="flex items-center gap-1.5 text-[#627282] font-bold uppercase tracking-wider text-[10px] font-display">
             <Filter size={13} />
             <span>Filters:</span>
           </div>
@@ -175,7 +175,7 @@ export default function GovQueuePage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+            className="px-3 py-1.5 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
             <option value="all">All Priorities</option>
             <option value="critical">Critical (≥ 75)</option>
@@ -184,18 +184,18 @@ export default function GovQueuePage() {
             <option value="low">Low (&lt; 25)</option>
           </select>
 
-          {/* Department Filter (Locked for Officer) */}
+          {/* Department Filter */}
           {isOfficer ? (
-            <div className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 font-semibold flex items-center gap-1.5 text-xs">
-              <Building size={12} className="text-emerald-600" />
+            <div className="px-3 py-1.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 font-semibold flex items-center gap-1.5 text-xs font-display">
+              <Building size={12} className="text-emerald-700" />
               <span>Dept: {currentUser?.department_name || officerDept || 'Assigned'}</span>
-              <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-1.5 py-0.2 rounded font-mono font-bold">Locked</span>
+              <span className="text-[10px] bg-emerald-200/80 text-emerald-950 px-1.5 py-0.5 rounded font-mono font-bold">Locked</span>
             </div>
           ) : (
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+              className="px-3 py-1.5 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
             >
               <option value="all">All Departments</option>
               {departments.map((d) => (
@@ -210,7 +210,7 @@ export default function GovQueuePage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+            className="px-3 py-1.5 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
             <option value="all">All Statuses</option>
             <option value="submitted">New Reports</option>
@@ -226,7 +226,7 @@ export default function GovQueuePage() {
           <select
             value={assignedFilter}
             onChange={(e) => setAssignedFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+            className="px-3 py-1.5 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
             <option value="all">All Assignments</option>
             <option value="me">Assigned to Me</option>
@@ -237,14 +237,14 @@ export default function GovQueuePage() {
           <select
             value={repeatedFilter}
             onChange={(e) => setRepeatedFilter(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-semibold focus:outline-none focus:border-emerald-600"
+            className="px-3 py-1.5 rounded-xl border border-[#0c1824]/10 bg-[#faf8f5] text-[#0c1824] font-semibold focus:outline-none focus:border-emerald-600 cursor-pointer"
           >
             <option value="all">All Incident Types</option>
             <option value="true">Repeated Problems Only</option>
             <option value="false">Individual Incidents Only</option>
           </select>
 
-          {/* Clear Filter button if filters active */}
+          {/* Clear Filter button */}
           {(priorityFilter !== 'all' || deptFilter !== 'all' || statusFilter !== 'all' || assignedFilter !== 'all' || repeatedFilter !== 'all' || searchQuery) && (
             <button
               type="button"
@@ -256,7 +256,7 @@ export default function GovQueuePage() {
                 setRepeatedFilter('all')
                 setSearchQuery('')
               }}
-              className="text-xs text-rose-600 hover:text-rose-700 font-semibold ml-auto"
+              className="text-xs text-rose-600 hover:text-rose-700 font-semibold ml-auto cursor-pointer"
             >
               Reset Filters
             </button>
@@ -265,29 +265,29 @@ export default function GovQueuePage() {
       </section>
 
       {/* Queue Table */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl shadow-xs overflow-hidden">
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-            <RefreshCw size={20} className="animate-spin text-emerald-600" />
+          <div className="p-12 text-center text-xs text-[#627282] flex flex-col items-center gap-2">
+            <RefreshCw size={20} className="animate-spin text-emerald-700" />
             <span>Loading priority queue from database...</span>
           </div>
         ) : filteredReports.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">Priority</th>
-                  <th className="py-3 px-4">Tracking & Problem</th>
-                  <th className="py-3 px-4">Area / Sector</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4">Assigned Officer</th>
-                  <th className="py-3 px-4">Photo Quality</th>
-                  <th className="py-3 px-4">Repeated</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                <tr className="border-b border-[#0c1824]/8 bg-[#faf8f5] text-[#627282] font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-4 font-display">Priority</th>
+                  <th className="py-3 px-4 font-display">Tracking & Problem</th>
+                  <th className="py-3 px-4 font-display">Area / Sector</th>
+                  <th className="py-3 px-4 font-display">Department</th>
+                  <th className="py-3 px-4 font-display">Assigned Officer</th>
+                  <th className="py-3 px-4 font-display">Photo Quality</th>
+                  <th className="py-3 px-4 font-display">Repeated</th>
+                  <th className="py-3 px-4 font-display">Status</th>
+                  <th className="py-3 px-4 text-right font-display">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#0c1824]/6">
                 {filteredReports.map((report) => {
                   const score = report.civic_risk_score?.score || 50
                   const isCritical = score >= 75
@@ -307,7 +307,7 @@ export default function GovQueuePage() {
                     'bg-slate-100 text-slate-700 border-slate-200'
 
                   return (
-                    <tr key={report.id || report._id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr key={report.id || report._id} className="hover:bg-[#faf8f5] transition-colors">
                       {/* Priority Score Column */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded-lg text-xs ${
@@ -321,29 +321,29 @@ export default function GovQueuePage() {
 
                       {/* Tracking ID & Problem */}
                       <td className="py-3.5 px-4 max-w-xs">
-                        <span className="font-mono text-[10px] text-slate-400 font-bold block">
+                        <span className="font-mono text-[10px] text-[#627282] font-bold block">
                           {report.tracking_id}
                         </span>
                         <Link
                           to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
-                          className="font-bold text-slate-900 hover:text-emerald-700 line-clamp-1 transition-colors"
+                          className="font-bold text-[#0c1824] hover:text-emerald-800 line-clamp-1 transition-colors font-display"
                         >
                           {report.title}
                         </Link>
                       </td>
 
                       {/* Area / Sector */}
-                      <td className="py-3.5 px-4 text-slate-600 max-w-[180px]">
+                      <td className="py-3.5 px-4 text-[#3e4c59] max-w-[180px]">
                         <div className="flex items-center gap-1 truncate">
-                          <MapPin size={12} className="text-slate-400 shrink-0" />
+                          <MapPin size={12} className="text-[#627282] shrink-0" />
                           <span className="truncate">{report.location?.address || report.location?.area || 'Islamabad ICT'}</span>
                         </div>
                       </td>
 
                       {/* Department */}
-                      <td className="py-3.5 px-4 text-slate-600 max-w-[160px]">
+                      <td className="py-3.5 px-4 text-[#3e4c59] max-w-[160px]">
                         <div className="flex items-center gap-1 font-medium truncate">
-                          <Building size={12} className="text-emerald-600 shrink-0" />
+                          <Building size={12} className="text-emerald-700 shrink-0" />
                           <span className="truncate">{report.department_name || report.department_id || 'CDA Municipal'}</span>
                         </div>
                       </td>
@@ -351,12 +351,12 @@ export default function GovQueuePage() {
                       {/* Assigned Officer */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {report.assigned_officer_name ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs bg-slate-100 text-slate-800 border border-slate-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-xs bg-[#faf8f5] text-[#0c1824] border border-[#0c1824]/8">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                             <span className="truncate max-w-[120px]">{report.assigned_officer_name}</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 font-semibold italic">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-amber-700 font-semibold italic">
                             Unassigned
                           </span>
                         )}
@@ -379,7 +379,7 @@ export default function GovQueuePage() {
                             <span>Cluster Linked</span>
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-medium">Single</span>
+                          <span className="text-[10px] text-[#627282] font-medium">Single</span>
                         )}
                       </td>
 
@@ -394,7 +394,7 @@ export default function GovQueuePage() {
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <Link
                           to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors inline-block"
+                          className="btn-primary py-1.5 px-3.5 text-xs rounded-xl font-bold inline-block"
                         >
                           Manage
                         </Link>
@@ -406,7 +406,7 @@ export default function GovQueuePage() {
             </table>
           </div>
         ) : (
-          <div className="py-12 text-center text-xs text-slate-500">
+          <div className="py-12 text-center text-xs text-[#627282]">
             No reports found matching selected filters.
           </div>
         )}

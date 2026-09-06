@@ -50,7 +50,7 @@ export default function GovDashboardPage() {
 
   const metrics = trends?.metrics || {}
   
-  // Real database metrics with queue synchronization to guarantee zero 0-count discrepancies
+  // Real database metrics with queue synchronization
   const totalReports = Math.max(queueStats.total || 0, metrics.total_reports || 0, recentReports.length)
   const criticalCount = Math.max(queueStats.critical || 0, metrics.critical_count || 0)
   const waitingActionCount = Math.max(queueStats.waiting_action || 0, queueStats.pending || 0, metrics.waiting_action_count || 0, metrics.active_open || 0)
@@ -63,17 +63,17 @@ export default function GovDashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Operations Header - Role Differentiated */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Operations Header */}
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-display">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
             <span>{isOfficer ? `Duty Officer Desk • ${deptName}` : 'Live Civic Operations • ICT Master Command'}</span>
           </div>
-          <h1 className="mt-2 text-2xl font-black text-slate-900 tracking-tight">
+          <h1 className="mt-2 text-2xl sm:text-3xl font-black text-[#0c1824] tracking-tight font-display">
             {isOfficer ? `${deptName} Operations Desk` : 'Raabta AI Operations Dashboard'}
           </h1>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-[#627282]">
             {isOfficer
               ? `Operational queue, field dispatch, and proof-of-work resolution oversight for ${deptName}.`
               : 'System-wide government oversight: monitor reports, oversee department response, and track municipal field resolutions across ICT.'
@@ -85,106 +85,106 @@ export default function GovDashboardPage() {
           <button
             type="button"
             onClick={loadDashboardData}
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors"
+            className="p-2.5 rounded-xl bg-[#faf8f5] hover:bg-slate-100 text-[#3e4c59] border border-[#0c1824]/8 transition-colors cursor-pointer"
             title="Refresh Metrics"
           >
-            <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-600' : ''} />
+            <RefreshCw size={15} className={loading ? 'animate-spin text-emerald-700' : ''} />
           </button>
           <Link
             to="/gov/queue"
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+            className="btn-primary py-2.5 px-4 text-xs rounded-xl font-bold"
           >
             {isOfficer ? 'Open Department Queue' : 'Open Attention Queue'}
           </Link>
         </div>
       </section>
 
-      {/* Real Database Metrics Cards (Strictly No Hardcoded Numbers) */}
+      {/* Real Database Metrics Cards */}
       <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 text-xs">
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs">
-          <span className="text-slate-500 font-semibold block">Reports Received</span>
-          <p className="text-2xl font-black text-slate-900 mt-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-[#0c1824]/8 shadow-sm space-y-1">
+          <span className="text-[#627282] font-semibold block font-display">Reports Received</span>
+          <p className="text-2xl font-black text-[#0c1824] mt-1 font-display">
             {loading ? '-' : totalReports}
           </p>
-          <span className="text-[10px] text-slate-400 mt-0.5 block">
+          <span className="text-[10px] text-[#627282] mt-0.5 block truncate">
             {isOfficer ? `Total in ${deptName}` : 'Total logged in ICT'}
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 shadow-xs">
-          <span className="text-rose-700 font-semibold flex items-center gap-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-rose-50/70 border border-rose-200/80 shadow-sm space-y-1">
+          <span className="text-rose-700 font-semibold flex items-center gap-1 font-display">
             <ShieldAlert size={14} />
             <span>High Priority</span>
           </span>
-          <p className="text-2xl font-black text-rose-700 mt-1">
+          <p className="text-2xl font-black text-rose-700 mt-1 font-display">
             {loading ? '-' : criticalCount}
           </p>
-          <span className="text-[10px] text-rose-600/80 mt-0.5 block">Score &ge; 75 / 100</span>
+          <span className="text-[10px] text-rose-600 mt-0.5 block font-mono">Score ≥ 75 / 100</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 shadow-xs">
-          <span className="text-amber-800 font-semibold flex items-center gap-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 shadow-sm space-y-1">
+          <span className="text-amber-800 font-semibold flex items-center gap-1 font-display">
             <Clock size={14} />
             <span>Waiting Action</span>
           </span>
-          <p className="text-2xl font-black text-amber-800 mt-1">
+          <p className="text-2xl font-black text-amber-800 mt-1 font-display">
             {loading ? '-' : waitingActionCount}
           </p>
-          <span className="text-[10px] text-amber-700/80 mt-0.5 block">New or unassigned</span>
+          <span className="text-[10px] text-amber-700 mt-0.5 block">New or unassigned</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 shadow-xs">
-          <span className="text-blue-800 font-semibold flex items-center gap-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-blue-50/70 border border-blue-200/80 shadow-sm space-y-1">
+          <span className="text-blue-800 font-semibold flex items-center gap-1 font-display">
             <span>In Progress</span>
           </span>
-          <p className="text-2xl font-black text-blue-800 mt-1">
+          <p className="text-2xl font-black text-blue-800 mt-1 font-display">
             {loading ? '-' : inProgressCount}
           </p>
-          <span className="text-[10px] text-blue-600/80 mt-0.5 block">Field teams deployed</span>
+          <span className="text-[10px] text-blue-600 mt-0.5 block">Field teams deployed</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-xs">
-          <span className="text-emerald-800 font-semibold flex items-center gap-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80 shadow-sm space-y-1">
+          <span className="text-emerald-800 font-semibold flex items-center gap-1 font-display">
             <CheckCircle2 size={14} />
             <span>Resolved</span>
           </span>
-          <p className="text-2xl font-black text-emerald-800 mt-1">
+          <p className="text-2xl font-black text-emerald-800 mt-1 font-display">
             {loading ? '-' : resolvedCount}
           </p>
-          <span className="text-[10px] text-emerald-600/80 mt-0.5 block">Completed works</span>
+          <span className="text-[10px] text-emerald-600 mt-0.5 block">Completed works</span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 shadow-xs">
-          <span className="text-orange-800 font-semibold flex items-center gap-1">
+        <div className="p-4 sm:p-5 rounded-2xl bg-orange-50/70 border border-orange-200/80 shadow-sm space-y-1">
+          <span className="text-orange-800 font-semibold flex items-center gap-1 font-display">
             <AlertTriangle size={14} />
             <span>Citizen Disputed</span>
           </span>
-          <p className="text-2xl font-black text-orange-800 mt-1">
+          <p className="text-2xl font-black text-orange-800 mt-1 font-display">
             {loading ? '-' : disputedCount}
           </p>
-          <span className="text-[10px] text-orange-700/80 mt-0.5 block">Citizen rejected fix</span>
+          <span className="text-[10px] text-orange-700 mt-0.5 block">Citizen rejected fix</span>
         </div>
       </section>
 
-      {/* Operational Highlights & Repeated Problems Banner */}
+      {/* Repeated Problems Cluster Notification */}
       {clusters.length > 0 && (
-        <section className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <section className="p-5 rounded-3xl bg-indigo-50/70 border border-indigo-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0">
+            <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shrink-0">
               <Layers size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">
+              <h3 className="font-bold text-[#0c1824] text-sm font-display">
                 {clusters.length} Repeated Civic Problem Clusters Detected (&lt; 250m Proximity)
               </h3>
-              <p className="text-slate-600 mt-0.5 text-xs">
+              <p className="text-[#3e4c59] mt-0.5 text-xs">
                 Multiple citizens reported identical physical hazards in the same sector. Coordinate unified municipal response.
               </p>
             </div>
           </div>
           <Link
             to="/gov/repeated"
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 shadow-sm transition-colors flex items-center gap-1.5"
           >
             <span>View Repeated Clusters</span>
             <ArrowRight size={13} />
@@ -192,20 +192,20 @@ export default function GovDashboardPage() {
         </section>
       )}
 
-      {/* Reports Needing Immediate Attention (Triage Table) */}
-      <section className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      {/* Reports Needing Immediate Attention */}
+      <section className="bg-white border border-[#0c1824]/8 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-[#0c1824]/6 pb-4">
           <div>
-            <h2 className="font-bold text-base text-slate-900">
+            <h2 className="font-bold text-base text-[#0c1824] font-display">
               Urgent Reports Needing Officer Action
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#627282] mt-0.5">
               Ranked deterministically by AI Civic Risk Engine (Safety Risk + Severity + Location + Public Impact).
             </p>
           </div>
           <Link
             to="/gov/queue"
-            className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+            className="text-xs font-bold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 font-display"
           >
             <span>Full Priority Queue</span>
             <ArrowRight size={13} />
@@ -213,31 +213,31 @@ export default function GovDashboardPage() {
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500 flex flex-col items-center gap-2">
-            <RefreshCw size={18} className="animate-spin text-emerald-600" />
+          <div className="p-8 text-center text-xs text-[#627282] flex flex-col items-center gap-2">
+            <RefreshCw size={18} className="animate-spin text-emerald-700" />
             <span>Loading priority queue...</span>
           </div>
         ) : recentReports.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
-                  <th className="py-2.5 px-3">Priority Score</th>
-                  <th className="py-2.5 px-3">Tracking ID & Problem</th>
-                  <th className="py-2.5 px-3">Location / Sector</th>
-                  <th className="py-2.5 px-3">Assigned Department</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
+                <tr className="border-b border-[#0c1824]/8 text-[#627282] font-semibold uppercase tracking-wider text-[10px]">
+                  <th className="py-2.5 px-3 font-display">Priority Score</th>
+                  <th className="py-2.5 px-3 font-display">Tracking ID & Problem</th>
+                  <th className="py-2.5 px-3 font-display">Location / Sector</th>
+                  <th className="py-2.5 px-3 font-display">Assigned Department</th>
+                  <th className="py-2.5 px-3 font-display">Status</th>
+                  <th className="py-2.5 px-3 text-right font-display">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#0c1824]/6">
                 {recentReports.map((report) => {
                   const score = report.civic_risk_score?.score || 50
                   const isCritical = score >= 75
                   const isHigh = score >= 50 && score < 75
 
                   return (
-                    <tr key={report.id || report._id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={report.id || report._id} className="hover:bg-[#faf8f5] transition-colors">
                       <td className="py-3 px-3">
                         <span className={`inline-flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded-md text-xs ${
                           isCritical ? 'bg-rose-50 text-rose-700 border border-rose-200' :
@@ -248,22 +248,22 @@ export default function GovDashboardPage() {
                         </span>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="font-mono text-[10px] text-slate-400 font-bold">
+                        <div className="font-mono text-[10px] text-[#627282] font-bold">
                           {report.tracking_id}
                         </div>
-                        <div className="font-bold text-slate-900 line-clamp-1 max-w-xs">
+                        <div className="font-bold text-[#0c1824] line-clamp-1 max-w-xs font-display">
                           {report.title}
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-600">
+                      <td className="py-3 px-3 text-[#3e4c59]">
                         <div className="flex items-center gap-1 truncate max-w-xs">
-                          <MapPin size={12} className="text-slate-400 shrink-0" />
+                          <MapPin size={12} className="text-[#627282] shrink-0" />
                           <span>{report.location?.address || report.location?.area || 'Islamabad ICT'}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-slate-600">
+                      <td className="py-3 px-3 text-[#3e4c59]">
                         <div className="flex items-center gap-1 font-medium">
-                          <Building size={12} className="text-emerald-600 shrink-0" />
+                          <Building size={12} className="text-emerald-700 shrink-0" />
                           <span className="truncate">{report.department_name || report.department_id || 'CDA'}</span>
                         </div>
                       </td>
@@ -275,7 +275,7 @@ export default function GovDashboardPage() {
                       <td className="py-3 px-3 text-right">
                         <Link
                           to={`/gov/reports/${report.tracking_id || report.id || report._id}`}
-                          className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors inline-block"
+                          className="btn-primary py-1 px-3 text-xs rounded-lg font-bold inline-block"
                         >
                           Triage & Manage
                         </Link>
@@ -287,7 +287,7 @@ export default function GovDashboardPage() {
             </table>
           </div>
         ) : (
-          <div className="py-8 text-center text-xs text-slate-500">
+          <div className="py-8 text-center text-xs text-[#627282]">
             No pending reports requiring attention. All caught up!
           </div>
         )}

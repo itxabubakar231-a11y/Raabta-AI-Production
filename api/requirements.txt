@@ -3,7 +3,6 @@ flask-cors
 python-dotenv
 Pillow
 google-genai
-faster-whisper
 Werkzeug
 requests
 edge-tts
@@ -12,3 +11,4 @@ bcrypt
 pyjwt
 dnspython
 reportlab
+certifi
